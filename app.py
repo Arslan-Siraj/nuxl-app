@@ -9,6 +9,7 @@ if __name__ == '__main__':
             st.Page(Path("content", "quickstart.py"), title="Quickstart", icon="👋"),
             st.Page(Path("content", "file_upload.py"), title="File Upload", icon="📂"),
             st.Page(Path("content", "analyze.py"), title="Analysis", icon="⚙️"),
+            st.Page(Path("content", "rescoring.py"), title="Rescoring", icon="📊"),
             st.Page(Path("content", "results.py"), title="Output", icon="📊"),
         ]
     }
