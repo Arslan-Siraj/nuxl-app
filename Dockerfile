@@ -163,6 +163,12 @@ RUN make -j4 pyopenms
 WORKDIR /openms-build_py/pyOpenMS
 RUN pip install dist/*.whl
 
+# install rescore
+# Copy the package into the image
+COPY ./nuxl_rescore/nuxl_rescore-0.0.1.tar.gz /tmp/nuxl_rescore-0.0.1.tar.gz
+# Install it
+RUN pip install /tmp/nuxl_rescore-0.0.1.tar.gz
+
 # Prepare and run streamlit app.
 FROM compile-openms AS run-app
 # Create workdir and copy over all streamlit related files/folders.
