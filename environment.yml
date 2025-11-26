@@ -12,7 +12,7 @@ dependencies:
   - numpy==1.22.4 #dependency depend on pyopenms version
   - pip: # dependencies only available through pip
       # streamlit dependencies
-    - https://github.com/Arslan-Siraj/nuxl-app/nuxl_rescore/nuxl_rescore-0.0.1.tar.gz
+    - https://github.com/Arslan-Siraj/nuxl-app/blob/rescore/nuxl_rescore/nuxl_rescore-0.0.1.tar.gz   
     - streamlit==1.38.0
     - streamlit-plotly-events==0.0.6
     - streamlit-aggrid==0.3.4.post3
