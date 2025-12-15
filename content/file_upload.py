@@ -62,7 +62,7 @@ with tabs[0]:
         # Display all mzML files currently in workspace
         file_names_ = [f.name for f in Path(mzML_dir).iterdir()]
         df = pd.DataFrame(
-            {"file name": [item for item in file_names_  if not item.endswith(".csv")]})
+            {"file name": [item for item in file_names_ if not (item.endswith(".csv") or item.endswith(".mgf"))]})
         st.markdown("##### mzML/raw files in current workspace:")
         show_table(df)
         v_space(1)
