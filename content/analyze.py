@@ -96,7 +96,7 @@ with st.form("fasta-upload", clear_on_submit=False):
     # selected mzML file from mzML files list
     selected_mzML_file = st.selectbox(
         "choose mzML/raw file",
-        [item for item in mzML_files_ if not item.endswith(".csv")]
+        [item for item in mzML_files_ if not (item.endswith(".csv") or item.endswith(".mgf"))]
         ,
         help="If file not here, please upload at File Upload"
     )
