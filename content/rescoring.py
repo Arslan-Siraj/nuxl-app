@@ -4,7 +4,7 @@ import threading
 import os
 
 from pathlib import Path
-
+from src.result_files import *
 from src.run_subprocess import *
 
 params = page_setup()
@@ -14,20 +14,21 @@ if 'controllo' not in st.session_state or params["controllo"] == False:
     # Apply captcha by calling the captcha_control function
     captcha_control()
 
+st.title("Rescoring with Percolator")
+
 # download the files first time in
 nuxl_rescore_dir: Path = Path(st.session_state.workspace, "nuxl-rescore-files")
 
-from pathlib import Path
-import requests
-import io
-import zipfile
-
-# GitHub release ZIP URL
-zip_url = "https://github.com/Arslan-Siraj/NuXL_rescore_resources/releases/download/0.0.1/nuxl_rescore_resource.zip"
-
 # Check if folder is empty
 if not any(nuxl_rescore_dir.iterdir()):
-    st.info("Resources missing for rescoring. Downloading NuXL rescore resources ...")
+    import requests
+    import io
+    import zipfile
+
+    # GitHub release ZIP URL
+    zip_url = "https://github.com/Arslan-Siraj/NuXL_rescore_resources/releases/download/0.0.1/nuxl_rescore_resource.zip"
+
+    st.info("Resources missing for rescoring. Downloading first NuXL rescore resources ...")
 
     # Progress bar
     progress_bar = st.progress(0)
@@ -65,7 +66,6 @@ if not any(nuxl_rescore_dir.iterdir()):
 ##################################
 # Main Rescoring Page Content
 ##################################
-st.title("Rescoring with Percolator")
 
 if "selected-result-files" not in st.session_state:
     st.session_state["selected-result-files"] = params.get("selected-result-files", [])
@@ -73,128 +73,193 @@ if "selected-result-files" not in st.session_state:
 # result directory path in current session state
 result_dir: Path = Path(st.session_state.workspace, "result-files")
 
-session_files = [
+#make sure load all example result files
+load_example_result_files()
+
+session_idXML_files = [
         f.name
         for f in Path(st.session_state.workspace, "result-files").iterdir()
         if (
             f.name.endswith(".idXML")
-            and not any(x in f.name for x in ["0.0100", "0.1000", "1.0000"])
+            and not any(x in f.name for x in ["0.0100", "0.1000", "1.0000","RT_feat"])
         )
     ]
 
-unimod = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "unimod" / "unimod_to_formula.csv")
-feat_config = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "features-config.json")
-output_path = r"/home/arslan/test_rescore/test_out"
+if not session_idXML_files:
+    st.error("No valid .idXML files found in the result-files directory. please run NuXL search-engine")
 
-with st.form("Rescoring_form", clear_on_submit=False):
-    # select box to select .idXML file to see the results
-    selected_id_file = st.selectbox("Choose a file for rescoring: ", session_files)
-    idXML_file = str(Path(st.session_state.workspace, "result-files", selected_id_file))
+else:
+    unimod = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "unimod" / "unimod_to_formula.csv")
+    feat_config = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "features-config.json")
 
-    protocol = st.selectbox(
-        'Select the suitable protocol',
-        ['RNA_DEB', 'RNA_NM', 'RNA_4SU', 'RNA_UV', 'RNA_Other'],
-        help="Please select suitable protocol for the crosslinking experiment performed.",
-        )
-    
-    Retention_time_features = st.checkbox("Retention time prediction and features ", value=True, help="Check this box to predict and use retention time features during rescoring.")
+    with st.form("Rescoring_form", clear_on_submit=False):
+        # select box to select .idXML file to see the results
+        selected_id_file = st.selectbox("Choose a file for rescoring: ", session_idXML_files)
+        idXML_file = str(Path(st.session_state.workspace, "result-files", selected_id_file))
+        st.info(f"Full path: {idXML_file}")
 
-    Max_correlation_features = st.checkbox("Max correlation features", value=True, help="Check this box to use max correlation features during rescoring.")
-    
-    submit_button = st.form_submit_button("Run-Rescoring", type="primary")
+        protocol = st.selectbox(
+            'Select the suitable protocol',
+            ['RNA_DEB', 'RNA_NM', 'RNA_4SU', 'RNA_UV', 'RNA_Other'],
+            help="Please select suitable protocol for the crosslinking experiment performed.",
+            )
+        
+        Retention_time_features = st.checkbox("Retention time prediction and features ", value=True, help="Check this box to predict and use retention time features during rescoring.")
 
-# Create a dictionary to capture the output and status of the subprocess
-result_dict = {}
-result_dict["success"] = False
-result_dict["log"] = " "
+        Max_correlation_features = st.checkbox("Max correlation features", value=True, help="Check this box to use max correlation features during rescoring.")
+        
+        submit_button = st.form_submit_button("Run-Rescoring", type="primary")
 
-# Create a flag to terminate the subprocess
-terminate_flag = threading.Event()
-terminate_flag.set()
+    # Create a dictionary to capture the output and status of the subprocess
+    result_dict = {}
+    result_dict["success"] = False
+    result_dict["log"] = " "
 
-# Function to terminate the subprocess
-def terminate_subprocess():
-    """Set flag to terminate subprocess."""
-    global terminate_flag
+    # Create a flag to terminate the subprocess
+    terminate_flag = threading.Event()
     terminate_flag.set()
 
-# run analysis 
-if submit_button: 
+    # Function to terminate the subprocess
+    def terminate_subprocess():
+        """Set flag to terminate subprocess."""
+        global terminate_flag
+        terminate_flag.set()
 
-    # Check if the "Extract ids" button is clicked
-    if st.button("Terminate/Clear", key="terminate-button", type="secondary"):
-        # terminate subprocess
-        terminate_subprocess()
-        st.warning("Process terminated. The analysis may not be complete.")
+    # run analysis 
+    if submit_button: 
 
-        # clear form
-        st.rerun() 
+        # Check if the "Extract ids" button is clicked
+        if st.button("Terminate/Clear", key="terminate-button", type="secondary"):
+            # terminate subprocess
+            terminate_subprocess()
+            st.warning("Process terminated. The analysis may not be complete.")
 
-    # Display a status message while running the analysis
-    with st.status("Running analysis... Please wait until analysis done 😑"):
+            # clear form
+            st.rerun() 
 
-        # Define the command to run as a subprocess (example: grep or findstr (for windows))
-        # 'nt' indicates Windows
-        if os.name == 'nt':  
-            args = ["Python", "D:\\Nuxl_app_development\\nuxl_rescore_files\\NuXL_rescore\\run.py", "-id", id_file, "-calibration", calibration,
-                     "-unimod", unimod, "-feat_config", feat_config, "-model_path", model_path ]
-        else: 
-            if Retention_time_features:
-                if protocol == 'RNA_DEB':
-                    model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_DEB")
-                    calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_DEB.csv")
-                    st.write("Using RNA_DEB specific model and calibration data.")
+        # Display a status message while running the analysis
+        with st.status("Running analysis... Please wait until analysis done 😑"):
 
-                elif protocol == 'RNA_NM':
-                    model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_NM")
-                    calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_NM.csv")
-                    st.write("Using RNA_NM specific model and calibration data.")
+            # Define the command to run as a subprocess (example: grep or findstr (for windows))
+            # 'nt' indicates Windows
+            if os.name == 'nt':  
+                args = ["Python", "D:\\Nuxl_app_development\\nuxl_rescore_files\\NuXL_rescore\\run.py", "-id", id_file, "-calibration", calibration,
+                        "-unimod", unimod, "-feat_config", feat_config, "-model_path", model_path ]
+            else: 
+                if Retention_time_features:
+                    if protocol == 'RNA_DEB':
+                        model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_DEB")
+                        calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_DEB.csv")
+                        #st.write("Using RNA_DEB specific model and calibration data.")
 
-                elif protocol == 'RNA_4SU':
-                    model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_4SU")
-                    calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_4SU.csv")
-                    st.write("Using RNA_4SU specific model and calibration data.")
+                    elif protocol == 'RNA_NM':
+                        model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_NM")
+                        calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_NM.csv")
+                        #st.write("Using RNA_NM specific model and calibration data.")
 
-                elif protocol == 'RNA_UV' or protocol == "RNA_Other":
-                    model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "generic_model" / "full_hc_Train_RNA_All")
-                    calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_All.csv")
-                    st.write("Using generic RNA_UV and Other model and calibration data.")
-            
-            st.write(model_path)
-            st.write(calibration_data)
+                    elif protocol == 'RNA_4SU':
+                        model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_4SU")
+                        calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_4SU.csv")
+                        #st.write("Using RNA_4SU specific model and calibration data.")
 
-            # run the different combinations of features
-            if Retention_time_features and not Max_correlation_features:
-                st.write("Using ONLY retention time features.")
-                # Assume 'posix' for Linux and macOS
-                args =["nuxl_rescore", "-id", idXML_file, "-calibration", calibration_data,
-                     "-unimod", unimod, "-feat_config", feat_config, "-model_path", model_path, "-out", output_path] 
+                    elif protocol == 'RNA_UV' or protocol == "RNA_Other":
+                        model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "generic_model" / "full_hc_Train_RNA_All")
+                        calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_All.csv")
+                        #st.write("Using generic RNA_UV and Other model and calibration data.")
                 
-            elif Retention_time_features and Max_correlation_features:
-                st.write("Using retention time and max correlation features.")
-                # Assume 'posix' for Linux and macOS
-                args =["nuxl_rescore", "-id", selected_id_file, "-calibration", calibration_data,
-                     "-unimod", unimod, "-feat_config", feat_config, "-model_path", model_path, "-out", output_path]
-            #else:
-                # Assume 'posix' for Linux and macOS
-            #    args =["nuxl_rescore", "-id", selected_id_file, "-calibration", calibration_data,
-            #            "-unimod", unimod, "-feat_config", feat_config, "-model_path", model_path, "-out", output_path]
+                #st.write(model_path)
+                #st.write(calibration_data)
 
-        # Add any additional variables needed for the subprocess (if any)
-        variables = []  
+                # run the different combinations of features
+                if Retention_time_features and not Max_correlation_features:
+                    st.write("Using ONLY retention time features.")
+                    # Assume 'posix' for Linux and macOS
+                    args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
+                        "-unimod", unimod, "-feat_config", feat_config, "-rt_model", "DeepLC", "-model_path", model_path, "-out", str(result_dir)] 
+                
+                elif not Retention_time_features and Max_correlation_features:
+                    st.write("Using ONLY max correlation feature.")
+                    # Assume 'posix' for Linux and macOS
+                    args =["nuxl_rescore", "run", "-id", idXML_file,"-rt_model", "None", "-ms2pip", 
+                        "-unimod", unimod, "-feat_config", feat_config, "-out", str(result_dir)] 
 
-        # want to see the command values and argues
-        message = f"Running '{' '.join(args)}'"
-        st.info(message)
+                elif Retention_time_features and Max_correlation_features:
+                    st.write("Using retention time and max correlation feature.")
+                    # Assume 'posix' for Linux and macOS
+                    args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
+                        "-unimod", unimod, "-rt_model", "DeepLC", "-ms2pip", "-feat_config", feat_config, "-model_path", model_path, "-out", str(result_dir)]
+                else:
+                    st.error("Please select at least one feature to use for rescoring.")
+                    st.stop()
 
-        # run subprocess command
-        run_subprocess(args, variables, result_dict)
+            # Add any additional variables needed for the subprocess (if any)
+            variables = []  
 
-    # Check if the subprocess was successful
-    if result_dict["success"]:
-        # Here can add code here to handle the results, e.g., display them to the user
+            if Max_correlation_features:
+                id_file = Path(selected_id_file)
 
-        pass  # Placeholder for result handling
+                mgf_file = id_file.with_suffix(".mgf")
+                mzML_file = id_file.with_suffix(".mzML")
+
+                mgf_path = Path(st.session_state.workspace, "mzML-files", mgf_file)
+                mzML_path = Path(st.session_state.workspace, "mzML-files", mzML_file)
+
+                print("mgf_file_path:", mgf_path)
+                print("mzML_file_path:", mzML_path)
+
+                if not mgf_path.exists():
+                    if not mzML_path.exists():
+                        st.info("Rescoring with max correlation features requires mzML file.")
+                        st.error(
+                            f"Required mzML file '{mzML_file}' not found in mzML-files directory."
+                        )
+                        st.stop()
+
+                    else:
+                        st.info("Converting mzML → MGF")
+                        args_convert = [
+                                        "FileConverter",
+                                        "-in", str(mzML_path),
+                                        "-out", str(mgf_path)
+                                    ]
+
+                        st.info(f"Running: {' '.join(args_convert)}")
+
+                        result = subprocess.run(
+                            args_convert,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True
+                        )
+
+                        if result.returncode != 0:
+                            st.error("mzML → MGF conversion failed")
+                            st.text(result.stderr)
+                            st.stop()
+                        else:
+                            st.success("mzML → MGF conversion completed")
+                
+                args.extend(["-mgf", str(mgf_path)])
+
+            # want to see the command values and argues
+            message = f"Running '{' '.join(args)}'"
+            st.info(message)
+
+            # run subprocess command
+            run_subprocess(args, variables, result_dict)
+
+        # Check if the subprocess was successful
+        if result_dict["success"]:
+            # Here can add code here to handle the results, e.g., display them to the user
+            for f in result_dir.glob("peprec*.csv"):
+                f.unlink()  # deletes the file
+        else:
+            # Display error message
+            st.error(
+                    f"⚠️ **Rescoring Failed**\n\n"
+                    f"Please look at the log.\n"
+                    )
             
 # At the end of each page, always save parameters (including any changes via widgets with key)
 save_params(params)
+
