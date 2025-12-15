@@ -139,6 +139,9 @@ def load_example_mzML_files() -> None:
     for f in Path("example-data", "mzML").glob("*.mzML"):
         shutil.copy(f, mzML_dir)
         add_to_selected_mzML(f.stem)
+
+    for mgf in Path("example-data", "mzML").glob("*.mgf"):
+        shutil.copy(mgf, mzML_dir)
     #st.success("Example mzML files loaded!")
 
 def remove_selected_mzML_files(to_remove: list[str]) -> None:
