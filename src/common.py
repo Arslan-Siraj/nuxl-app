@@ -111,7 +111,7 @@ def page_setup(page: str = "") -> dict[str, Any]:
     # Set Streamlit page configurations
     st.set_page_config(
         page_title=APP_NAME,
-        page_icon="assets/OpenMS.png",
+        page_icon="assets/openms_transparent_bg_logo.svg",
         layout="wide",
         initial_sidebar_state="auto",
         menu_items=None,
@@ -362,7 +362,7 @@ You can share this unique workspace ID with other people.
 **{st.session_state['workspace'].name}**
 """
                 )
-        st.image("assets/OpenMS.png", "powered by")
+        st.image("assets/OpenMS_new.png", "powered by")
         #st.logo()
     return params
 
