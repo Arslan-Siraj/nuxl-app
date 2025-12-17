@@ -14,7 +14,15 @@ if 'controllo' not in st.session_state or params["controllo"] == False:
     # Apply captcha by calling the captcha_control function
     captcha_control()
 
-st.title("Rescoring with Percolator")
+st.title("Rescoring with Data-Driven Features from Machine Learning Models", 
+         help="Rescoring refers to the post-processing of initial identification results "
+        "to improve discrimination between correct and incorrect matches by "
+        "incorporating additional evidence, such as predicted retention time or "
+        "fragment ion intensities. Such approaches have been shown to increase "
+        "identification confidence and reduce false discovery rates in complex "
+        "proteomics and cross-linking mass spectrometry analyses "
+        "(see Proteomics 2023, DOI: 10.1002/pmic.202300144)."
+        )
 
 # download the files first time in
 nuxl_rescore_dir: Path = Path(st.session_state.workspace, "nuxl-rescore-files")
@@ -81,7 +89,7 @@ session_idXML_files = [
         for f in Path(st.session_state.workspace, "result-files").iterdir()
         if (
             f.name.endswith(".idXML")
-            and not any(x in f.name for x in ["0.0100", "0.1000", "1.0000","RT_feat"])
+            and not any(x in f.name for x in ["0.0100", "0.1000", "1.0000","RT_feat", "RT_Int_feat", "updated_feat"])
         )
     ]
 
@@ -96,7 +104,7 @@ else:
         # select box to select .idXML file to see the results
         selected_id_file = st.selectbox("Choose a file for rescoring: ", session_idXML_files)
         idXML_file = str(Path(st.session_state.workspace, "result-files", selected_id_file))
-        st.info(f"Full path: {idXML_file}")
+        #st.info(f"Full path: {idXML_file}")
 
         protocol = st.selectbox(
             'Select the suitable protocol',
@@ -266,7 +274,7 @@ else:
             for f in result_dir.iterdir():
                 if f.is_file() and f.suffix in extensions_to_remove:
                    f.unlink()
-                   
+
         else:
             # Display error message
             st.error(

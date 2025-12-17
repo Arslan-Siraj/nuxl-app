@@ -196,7 +196,7 @@ with tabs[0]:
                                 'anotarray': [str(value) for value in {selected_row[0]['ions']}.pop().split(',')]
                             }
 
-                        print("==>>> length of annotation_data_idxml: ", len(annotation_data_idxml['anotarray']), "\n-------------\n")
+                        #print("==>>> length of annotation_data_idxml: ", len(annotation_data_idxml['anotarray']), "\n-------------\n")
                         
                         #annotation_data_idxml_df = pd.DataFrame(annotation_data_idxml)
                         #annotation_data_idxml_df.to_csv(str(selected_row[0]['ScanNr']) + "_idxml_annot.csv")
@@ -208,7 +208,7 @@ with tabs[0]:
                             # Convert annotation_data into a dictionary for efficient matching
                             annotation_dict = {(round(mz, 6)): anot for mz, anot in zip(annotation_data_idxml['mzarray'], annotation_data_idxml['anotarray'])}
                             
-                            print("==>>> annotation_dict idxml: ", annotation_dict , "\n-------------\n")
+                            #print("==>>> annotation_dict idxml: ", annotation_dict , "\n-------------\n")
                             # Annotate the data
                             annotation_data = []
                             for intensity, mz in zip(inten_full, mz_full):
@@ -222,10 +222,10 @@ with tabs[0]:
                                     'anotarray': annotation
                                 }) 
 
-                            n_non_empty = len([
-                                                entry for entry in annotation_data if entry['anotarray'] != ' '
-                                            ])
-                            print("==>>> annotated: ", n_non_empty , "\n-------------\n")
+                            #n_non_empty = len([
+                            #                    entry for entry in annotation_data if entry['anotarray'] != ' '
+                            #                ])
+                            #print("==>>> annotated: ", n_non_empty , "\n-------------\n")
                             
                         if MS2 is None:
                             annotation_data = annotation_data_idxml # just provide the annotated peaks
