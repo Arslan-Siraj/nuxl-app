@@ -35,7 +35,7 @@ if not any(nuxl_rescore_dir.iterdir()):
     status_text = st.empty()
 
     # Streamed download
-    with requests.get(zip_url, stream=True) as r:
+    with requests.get(zip_url, timeout=500, stream=True) as r:
         r.raise_for_status()
         total_size = int(r.headers.get("Content-Length", 0))
         downloaded = 0
@@ -241,6 +241,9 @@ else:
                 
                 args.extend(["-mgf", str(mgf_path)])
 
+            args.extend(["-perc_exe", "percolator"])
+            args.extend(["-perc_adapter", "PercolatorAdapter"])
+
             # want to see the command values and argues
             message = f"Running '{' '.join(args)}'"
             st.info(message)
@@ -250,9 +253,20 @@ else:
 
         # Check if the subprocess was successful
         if result_dict["success"]:
+            st.info("⚡️ **Rescoring Completed Successfully!** ⚡️")
             # Here can add code here to handle the results, e.g., display them to the user
-            for f in result_dir.glob("peprec*.csv"):
-                f.unlink()  # deletes the file
+            extensions_to_remove = {
+                ".csv",
+                ".peprec",
+                ".tab",
+                ".png",
+                ".weights",
+            }
+
+            for f in result_dir.iterdir():
+                if f.is_file() and f.suffix in extensions_to_remove:
+                   f.unlink()
+                   
         else:
             # Display error message
             st.error(
@@ -262,4 +276,5 @@ else:
             
 # At the end of each page, always save parameters (including any changes via widgets with key)
 save_params(params)
+
 
