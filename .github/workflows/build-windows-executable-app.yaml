@@ -98,7 +98,7 @@ jobs:
           ${{ runner.os }}-ccache-${{ env.BASE_REF }}
           ${{ runner.os }}-ccache-
           
-     - name: Add THIRDPARTY
+    - name: Add THIRDPARTY
       shell: bash
       run: |
           # initialize THIRDPARTY
@@ -146,7 +146,7 @@ jobs:
           CCACHE_COMPRESSLEVEL: 12
           CCACHE_MAXSIZE: 400M
 
-   - name: Test Windows
+    - name: Test Windows
       shell: bash
       run: ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/citest.cmake
       env:
