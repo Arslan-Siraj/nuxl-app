@@ -73,7 +73,7 @@ if "selected-fasta-files" not in st.session_state:
     st.session_state["selected-fasta-files"] = params.get("selected-fasta-files", [])
 
 # make sure mzML example files in current session state
-load_example_mzML_files()
+#load_example_mzML_files()
 
 # take mzML files from current session file
 mzML_files_ = [f.name for f in Path(st.session_state.workspace, "mzML-files").iterdir()]
@@ -81,7 +81,7 @@ mzML_files_ = [f.name for f in Path(st.session_state.workspace, "mzML-files").it
 #delete_files(directory = Path(st.session_state.workspace, "mzML-files"), remove_files_end_with = '.raw.mzML')
 
 # make sure fasta example files in current session state
-load_example_fasta_files()
+#load_example_fasta_files()
 
 # take fasta files from current session file
 fasta_files = [f.name for f in Path(st.session_state.workspace,"fasta-files").iterdir()]
@@ -90,6 +90,9 @@ fasta_files = [f.name for f in Path(st.session_state.workspace,"fasta-files").it
 if 'Trypsin/P' in NuXL_config['enzyme']['restrictions']:
     NuXL_config['enzyme']['restrictions'].remove('Trypsin/P')
     NuXL_config['enzyme']['restrictions'].insert(0, 'Trypsin/P')
+
+mzML_file_path = None
+database_file_path = None
 
 with st.form("fasta-upload", clear_on_submit=False):
 
@@ -248,15 +251,10 @@ with st.form("fasta-upload", clear_on_submit=False):
                     # Invalid input: Display an error message
                     st.error(f"Invalid XL FDR format: {e} Please provide input in the format [0.01, 0.1, 1.0] or a single float between 0.00 and 1.00.")
     
-    submit_button = st.form_submit_button("Run-analysis", type="primary")
+    submit_button = st.form_submit_button("Run-analysis", type="primary",  disabled=mzML_file_path is None or database_file_path is None)
 
 # out file path
 result_dir: Path = Path(st.session_state.workspace, "result-files")
-
-# create same output file path name as input file path
-mzML_file_name = os.path.basename(mzML_file_path)
-protocol_name = os.path.splitext(mzML_file_name)[0]
-result_path = os.path.join(result_dir, protocol_name + ".idXML")
 
 ##################################### NuXL command (subprocess) ############################
 
@@ -288,6 +286,11 @@ if submit_button:
 
     # with st.spinner("Running analysis... Please wait until analysis done 😑"): #without status/ just spinner button
     with st.status("Running analysis... Please wait until analysis done 😑"):
+       
+        # create same output file path name as input file path
+        mzML_file_name = os.path.basename(mzML_file_path)
+        protocol_name = os.path.splitext(mzML_file_name)[0]
+        result_path = os.path.join(result_dir, protocol_name + ".idXML")
 
         if mzML_file_path.endswith(".raw.mzML"):
             st.warning(f"(.raw.mzML) not supported, please select (.raw) or (.mzML) format",  icon="ℹ️")

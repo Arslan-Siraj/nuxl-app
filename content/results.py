@@ -127,7 +127,7 @@ tabs = st.tabs(tabs)
 with tabs[0]:  
 
     #make sure load all example result files
-    load_example_result_files()
+    #load_example_result_files()
     # take all .idXML files in current session files; .idXML is CSMs 
     session_files = [f.name for f in Path(st.session_state.workspace,"result-files").iterdir() if (f.name.endswith(".idXML") and "_XLs" in f.name)]
     # select box to select .idXML file to see the results
@@ -407,7 +407,7 @@ with tabs[0]:
 #with "Result files" 
 with tabs[1]:
     #make sure to load all results example files
-    load_example_result_files()
+    #load_example_result_files()
 
     if any(Path(result_dir).iterdir()):
         v_space(2)

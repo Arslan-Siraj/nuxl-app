@@ -55,7 +55,7 @@ with tabs[0]:
                 save_uploaded_mzML(files)
 
     #load example mzML files to current session state
-    load_example_mzML_files()
+    #load_example_mzML_files() 
 
     if any(Path(mzML_dir).iterdir()):
         v_space(2)
@@ -100,7 +100,7 @@ with tabs[1]:
                 save_uploaded_fasta(files)
 
     #load example fasta files to current session state
-    load_example_fasta_files()
+    #load_example_fasta_files()
 
     if any(Path(fasta_dir).iterdir()):
         v_space(2)

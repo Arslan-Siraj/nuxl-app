@@ -82,7 +82,7 @@ if "selected-result-files" not in st.session_state:
 result_dir: Path = Path(st.session_state.workspace, "result-files")
 
 #make sure load all example result files
-load_example_result_files()
+#load_example_result_files()
 
 session_idXML_files = [
         f.name
