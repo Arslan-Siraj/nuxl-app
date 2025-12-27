@@ -191,11 +191,11 @@ with st.form("fasta-upload", clear_on_submit=False):
 
     with cols[1]:
         scoring = cols[1].radio(
-        "select the scoring method",
-        [NuXL_config['scoring']['restrictions'][1], NuXL_config['scoring']['restrictions'][0]],
-        help=NuXL_config['scoring']['description'] + " default: "+ NuXL_config['scoring']['default'],
-        key="scoring"
-        )
+            "scoring method",
+            [NuXL_config['scoring']['restrictions'][1], NuXL_config['scoring']['restrictions'][0]],
+            help=NuXL_config['scoring']['description'] + " default: "+ NuXL_config['scoring']['default'],
+            key="scoring"
+            )
  
     with st.expander("**Advanced parameters**"):
         
@@ -305,7 +305,7 @@ if submit_button:
 
                 args = [OpenNuXL_exec, "-ThermoRaw_executable", thermo_exec_path, "-in", mzML_file_path, "-database", database_file_path, "-out", result_path, "-NuXL:presets", preset, 
                                 "-NuXL:length", length, "-NuXL:scoring", scoring, "-precursor:mass_tolerance",  Precursor_MT, "-precursor:mass_tolerance_unit",  Precursor_MT_unit,
-                                "-fragment:mass_tolerance",  Fragment_MT, "-fragment:mass_tolerance_unit",  Fragment_MT_unit,
+                                "-fragment:mass_tolerance",  Fragment_MT, "-fragment:mass_tolerance_unit",  Fragment_MT_unit, "-threads", str(30),
                                 "-peptide:min_size", peptide_min, "-peptide:max_size", peptide_max, "-peptide:missed_cleavages", Missed_cleavages, "-peptide:enzyme", Enzyme,
                                 "-modifications:variable_max_per_peptide", Variable_max_per_peptide,"-report:peptideFDR", peptideFDR
                                 ]
@@ -318,7 +318,7 @@ if submit_button:
                 thermo_exec_path = "/thirdparty/ThermoRawFileParser/ThermoRawFileParser.exe"
                 # In docker it executable on path
                 args = ["OpenNuXL", "-ThermoRaw_executable", thermo_exec_path, "-in", mzML_file_path, "-database", database_file_path, "-out", result_path, "-NuXL:presets", preset, 
-                            "-NuXL:length", length, "-NuXL:scoring", scoring, "-precursor:mass_tolerance",  Precursor_MT, "-precursor:mass_tolerance_unit",  Precursor_MT_unit,
+                            "-NuXL:length", length, "-NuXL:scoring", scoring, "-precursor:mass_tolerance",  Precursor_MT, "-precursor:mass_tolerance_unit",  Precursor_MT_unit, 
                             "-fragment:mass_tolerance",  Fragment_MT, "-fragment:mass_tolerance_unit",  Fragment_MT_unit,"-peptide:min_size", peptide_min, "-peptide:max_size",peptide_max, "-peptide:missed_cleavages",Missed_cleavages, "-peptide:enzyme", Enzyme,
                             "-modifications:variable_max_per_peptide", Variable_max_per_peptide,"-report:peptideFDR", peptideFDR                            
                             ]
@@ -346,8 +346,8 @@ if submit_button:
             variables = []  
 
             # want to see the command values and argues
-            #message = f"Running '{' '.join(args)}'"
-            #st.info(message)
+            message = f"Running '{' '.join(args)}'"
+            st.info(message)
             st.info(f"Analyzing {mzML_file_name}",  icon="ℹ️")
 
             # run subprocess command
@@ -360,7 +360,7 @@ if submit_button:
             # terminate_flag = threading.Event()
             # thread = threading.Thread(target=run_subprocess, args=(args, variables, result_dict))
             # thread.start()
-            # thread.join()
+            # thread.join()<
 
         delete_files(directory = Path(st.session_state.workspace, "mzML-files"), remove_files_end_with = '.raw.mzML')
 
@@ -427,7 +427,9 @@ if submit_button:
 
         # then download link for identification file of above criteria 
         download_selected_result_files(identification_files, f":arrow_down: {protocol_name}_XL_identification_files")
-    
+
+        st.success("⚡️ **Analyzing with NuXL Completed Successfully!** ⚡️")
+
     else:
         # Display error message
         st.error(
