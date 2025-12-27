@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from src.result_files import *
 from src.run_subprocess import *
+from src.view import plot_FDR_plot
 
 params = page_setup()
 
@@ -89,7 +90,7 @@ session_idXML_files = [
         for f in Path(st.session_state.workspace, "result-files").iterdir()
         if (
             f.name.endswith(".idXML")
-            and not any(x in f.name for x in ["0.0100", "0.1000", "1.0000","RT_feat", "RT_Int_feat", "updated_feat"])
+            and not any(x in f.name for x in ["0.0100", "0.1000", "1.0000","RT_feat", "RT_Int_feat", "updated_feat", "_perc_", "_sse_perc_" ])
         )
     ]
 
@@ -105,7 +106,7 @@ else:
         selected_id_file = st.selectbox("Choose a file for rescoring: ", session_idXML_files)
         idXML_file = str(Path(st.session_state.workspace, "result-files", selected_id_file))
         #st.info(f"Full path: {idXML_file}")
-
+        
         protocol = st.selectbox(
             'Select the suitable protocol',
             ['RNA_DEB', 'RNA_NM', 'RNA_4SU', 'RNA_UV', 'RNA_Other'],
@@ -116,6 +117,8 @@ else:
 
         Max_correlation_features = st.checkbox("Max correlation features", value=True, help="Check this box to use max correlation features during rescoring.")
         
+        plot_PseudROC = st.checkbox("plot pseudo-ROC", value=True, help="Check this for pseudo-ROC plot the comparison of rescoring.")
+
         submit_button = st.form_submit_button("Run-Rescoring", type="primary")
 
     # Create a dictionary to capture the output and status of the subprocess
@@ -177,27 +180,37 @@ else:
                 
                 #st.write(model_path)
                 #st.write(calibration_data)
+                idXML_file_100_XLs = result_dir / Path(idXML_file).name.replace(".idXML", "_perc_1.0000_XLs.idXML")
 
                 # run the different combinations of features
+                # RT_feat_
                 if Retention_time_features and not Max_correlation_features:
                     st.write("Using ONLY retention time features.")
                     # Assume 'posix' for Linux and macOS
                     args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
                         "-unimod", unimod, "-feat_config", feat_config, "-rt_model", "DeepLC", "-model_path", model_path, "-out", str(result_dir)] 
+                    idXML_file_extra_100_XLs = result_dir / f"RT_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
                 
+                # Int_feat_
                 elif not Retention_time_features and Max_correlation_features:
                     st.write("Using ONLY max correlation feature.")
                     # Assume 'posix' for Linux and macOS
                     args =["nuxl_rescore", "run", "-id", idXML_file,"-rt_model", "None", "-ms2pip", 
                         "-unimod", unimod, "-feat_config", feat_config, "-out", str(result_dir)] 
+                    idXML_file_extra_100_XLs = result_dir / f"Int_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
 
+                # RT_Int_feat_
                 elif Retention_time_features and Max_correlation_features:
                     st.write("Using retention time and max correlation feature.")
                     # Assume 'posix' for Linux and macOS
                     args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
                         "-unimod", unimod, "-rt_model", "DeepLC", "-ms2pip", "-feat_config", feat_config, "-model_path", model_path, "-out", str(result_dir)]
+                    idXML_file_extra_100_XLs = result_dir / f"RT_Int_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+
+
                 else:
                     st.error("Please select at least one feature to use for rescoring.")
+                    idXML_file_extra_100_XLs = result_dir / f"updated_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
                     st.stop()
 
             # Add any additional variables needed for the subprocess (if any)
@@ -255,13 +268,12 @@ else:
             # want to see the command values and argues
             message = f"Running '{' '.join(args)}'"
             st.info(message)
-
+            st.info("check inputs plot: " + str(idXML_file_100_XLs)+' and '+ str(idXML_file_extra_100_XLs)+' '+ str(Path(idXML_file).stem))
             # run subprocess command
             run_subprocess(args, variables, result_dict)
 
         # Check if the subprocess was successful
         if result_dict["success"]:
-            st.info("⚡️ **Rescoring Completed Successfully!** ⚡️")
             # Here can add code here to handle the results, e.g., display them to the user
             extensions_to_remove = {
                 ".csv",
@@ -274,6 +286,21 @@ else:
             for f in result_dir.iterdir():
                 if f.is_file() and f.suffix in extensions_to_remove:
                    f.unlink()
+
+            if plot_PseudROC:
+               #ploting_pseudoROC()
+                st.info("Generating Pseudo-ROC plot ...")
+                fig = plot_FDR_plot(
+                    idXML_id=str(idXML_file_100_XLs),
+                    idXML_extra=str(idXML_file_extra_100_XLs),
+                    FDR_level=20,
+                    exp_name=str(Path(idXML_file).stem)
+                )
+
+                #show figure
+                show_fig(fig,  f"{Path(idXML_file).stem}_PseudoROC_plot_rescoring")
+
+            st.success("⚡️ **Rescoring Completed Successfully!** ⚡️")
 
         else:
             # Display error message
