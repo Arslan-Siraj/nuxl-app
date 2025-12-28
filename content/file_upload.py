@@ -4,6 +4,7 @@ import pandas as pd
 from src.common import *
 from src.fileupload import *
 from src.captcha_ import *
+from src.result_files import *
 
 params = page_setup()
 
@@ -22,15 +23,19 @@ if "selected-mzML-files" not in st.session_state:
 if "selected-fasta-files" not in st.session_state:
     st.session_state["selected-fasta-files"] = params.get("selected-fasta-files", [])
 
+if "selected-result-files" not in st.session_state:
+    st.session_state["selected-result-files"] = params.get("selected-result-files", [])
+
 #title of page
 st.title("📂 File Upload")
 
 #directories of current session state : "mzML-files", "fasta-files"
 mzML_dir: Path = Path(st.session_state.workspace, "mzML-files")
 fasta_dir: Path = Path(st.session_state.workspace, "fasta-files")
+example_data_dir: Path = Path(st.session_state.workspace, "example-data-files")
 
 #tabs on page
-tabs = ["mzML/raw files", "Fasta files"]
+tabs = ["mzML/raw files", "Fasta files", "Load example files"]
 tabs = st.tabs(tabs)
 
 #mzML/raw files tab
@@ -124,4 +129,81 @@ with tabs[1]:
                 remove_all_fasta_files()
                 st.rerun()
 
+with tabs[2]:
+
+    def function_to_load_example_data():
+        import requests
+        import io
+        import zipfile
+
+        zip_url = "https://github.com/Arslan-Siraj/NuXL_rescore_resources/releases/download/0.0.2/RNA_DEB_Protein_NA_XL_example_files.zip"
+
+        st.info("Downloading example data files...")
+
+        # Progress bar
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        zip_buffer = io.BytesIO()
+        with requests.get(zip_url, timeout=500, stream=True) as r:
+            r.raise_for_status()
+            total_size = int(r.headers.get("Content-Length", 0))
+            downloaded = 0
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    zip_buffer.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        percent = int(downloaded * 100 / total_size)
+                        progress_bar.progress(percent)
+                        status_text.text(f"Downloading... {percent}%")
+
+        status_text.text("Extracting files...")
+        zip_buffer.seek(0)
+        with zipfile.ZipFile(zip_buffer) as z:
+            for member in z.infolist():
+                # Skip directories
+                if member.is_dir():
+                    continue
+                
+                # Take only the file name and add prefix
+                original_name = Path(member.filename).name
+                member_filename = f"example_{original_name}"
+                
+                # Define target path
+                target_path = example_data_dir / member_filename
+                
+                # Extract and write file
+                with z.open(member) as source, open(target_path, "wb") as target:
+                    target.write(source.read())
+        
+        # copy extracted files to their desired spaces
+        load_example_mzML_files()
+        load_example_fasta_files()
+        load_example_result_files()
+        st.rerun()
+
+        progress_bar.progress(100)
+        status_text.text("Done!")
+        
+    # Check if folder is empty
+    if not any(Path(example_data_dir).iterdir()):
+        if st.button("Load all example data to workspace", type="primary"):
+            function_to_load_example_data()
+    else:
+        st.info("Example files are already loaded in the workspace.")
+    
+        if any(Path(example_data_dir).iterdir()):
+            v_space(1)
+            # Display all mzML files currently in workspace
+            file_names_ = [f.name for f in Path(example_data_dir).iterdir()]
+            df = pd.DataFrame(
+                {"file name": [item for item in file_names_ if not (item.endswith(".txt"))]})
+            st.markdown("##### These files should be available in workspace: ")
+            show_table(df)
+            v_space(1)
+
+            if st.button("Reload example data files to workspace", type="primary", help="This will overwrite existing example files in the workspace."):
+                function_to_load_example_data()
+            
 save_params(params)

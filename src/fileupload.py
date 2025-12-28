@@ -136,11 +136,12 @@ def load_example_mzML_files() -> None:
     """
     # Copy files from example-data/mzML to workspace mzML directory, add to selected files
     mzML_dir: Path = Path(st.session_state.workspace, "mzML-files")
-    for f in Path("example-data", "mzML").glob("*.mzML"):
+    example_data_dir: Path = Path(st.session_state.workspace, "example-data-files")
+    for f in example_data_dir.glob("*.mzML"):
         shutil.copy(f, mzML_dir)
         add_to_selected_mzML(f.stem)
 
-    for mgf in Path("example-data", "mzML").glob("*.mgf"):
+    for mgf in example_data_dir.glob("*.mgf"):
         shutil.copy(mgf, mzML_dir)
     #st.success("Example mzML files loaded!")
 
@@ -290,9 +291,9 @@ def load_example_fasta_files() -> None:
     """
 
     fasta_dir: Path = Path(st.session_state.workspace, "fasta-files")
-
+    example_data_dir: Path = Path(st.session_state.workspace, "example-data-files")
     # Copy files from example-data/fasta to workspace fasta directory, add to selected files
-    for f in Path("example-data", "fasta").glob("*.fasta"):
+    for f in example_data_dir.glob("*.fasta"):
         shutil.copy(f, fasta_dir)
         add_to_selected_fasta(f.stem)
     #st.success("Example fasta files loaded!")

@@ -35,15 +35,12 @@ def load_example_result_files() -> None:
         None
     """
     result_dir: Path = Path(st.session_state.workspace, "result-files")
-
+    example_data_dir: Path = Path(st.session_state.workspace, "example-data-files")
     # Copy files from example-data/result to workspace result directory, add to selected files
-    for f in Path("example-data", "idXMLs").glob("*"):
-        #st.write("f in load_example", f)
-        shutil.copy(f, result_dir)
-        #f.name will pass with format extention
-        add_to_result(f.name)
-    #st.success("Example result files loaded!")
-    #     
+    for f in example_data_dir.iterdir():
+        if f.suffix in (".idXML", ".tsv"):
+            shutil.copy(f, result_dir)
+            add_to_result(f.name)  
 
 def remove_selected_result_files(to_remove: list[str]) -> None:
     """

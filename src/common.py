@@ -233,6 +233,9 @@ def page_setup(page: str = "") -> dict[str, Any]:
     
     Path(st.session_state.workspace,
          "nuxl-rescore-files").mkdir(parents=True, exist_ok=True)
+
+    Path(st.session_state.workspace,
+         "example-data-files").mkdir(parents=True, exist_ok=True)
     
     # Render the sidebar
     params = render_sidebar(page)
