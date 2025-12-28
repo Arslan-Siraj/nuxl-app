@@ -137,7 +137,7 @@ def save_uploaded_result(uploaded_files: list[bytes]) -> None:
     # Write files from buffer to workspace mzML directory, add to selected files
     for f in uploaded_files:
         #check if file not in result_dir and extension with .idXML/.tsv
-        if f.name not in [f.name for f in result_dir.iterdir()] and (f.name.endswith(".idXML") or f.name.endswith(".tsv")) and ("_XLs" in f.name):
+        if f.name not in [f.name for f in result_dir.iterdir()] and (f.name.endswith(".idXML") or f.name.endswith(".tsv")):
             with open(Path(result_dir, f.name), "wb") as fh:
                 fh.write(f.getbuffer())
         #add to selected result files in session 
