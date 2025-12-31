@@ -2,6 +2,7 @@
     "app-name": "NuXLApp",
     "version": "0.0.1",
     "repository-name": "nuxl-app",
+    "openms-version": "3.2.0",
     "analytics": {
         "google-analytics": {
             "enabled": false,
