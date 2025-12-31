@@ -259,9 +259,9 @@ jobs:
         ./python-${{ env.PYTHON_VERSION }}/python get-pip.py --no-warn-script-location
         rm get-pip.py
 
-    - name: Uncomment 'import site' in python311._pth file
+    - name: Uncomment 'import site' in python310._pth file
       run: |
-        sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python311._pth
+        sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python310._pth
 
     - name: Install Required Packages
       run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements.txt --no-warn-script-location
