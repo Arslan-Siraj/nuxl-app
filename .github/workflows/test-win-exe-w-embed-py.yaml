@@ -47,6 +47,7 @@ jobs:
           
       - name: Create All-in-one executable folder
         run: |
+          Remove-Item -Recurse -Force streamlit_exe
           mkdir streamlit_exe
           mv python-${{ env.PYTHON_VERSION }} streamlit_exe
           cp -r src streamlit_exe
