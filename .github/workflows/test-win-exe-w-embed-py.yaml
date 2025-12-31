@@ -6,10 +6,10 @@ on:
 
 jobs:
   build-win-executable-with-embeddable-python:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     env:
-      PYTHON_VERSION: 3.10
+      PYTHON_VERSION: 3.10.0
       APP_UpgradeCode: 4abc2e23-3ba5-40e4-95c9-09e6cb8ecaeb
       APP_NAME: OpenMS-NuXLApp-Test
 
