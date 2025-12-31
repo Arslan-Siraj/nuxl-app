@@ -24,10 +24,6 @@ from src.captcha_ import captcha_control
 # Detect system platform
 OS_PLATFORM = sys.platform
 
-# set these variables according to your project
-APP_NAME = "NuXL"
-REPOSITORY_NAME = "nuxl-app"
-
 @st.fragment(run_every=5)
 def monitor_hardware():
     cpu_progress = psutil.cpu_percent(interval=None) / 100
@@ -122,7 +118,7 @@ def page_setup(page: str = "") -> dict[str, Any]:
 
     # Set Streamlit page configurations
     st.set_page_config(
-        page_title=APP_NAME,
+        page_title=st.session_state.settings["app-name"],
         page_icon="assets/OpenMS.png",
         layout="wide",
         initial_sidebar_state="auto",
@@ -214,7 +210,7 @@ def page_setup(page: str = "") -> dict[str, Any]:
         if "windows" in sys.argv:
             os.chdir("../nuxl-app-main")
         # Define the directory where all workspaces will be stored
-        workspaces_dir = Path("..", "workspaces-" + REPOSITORY_NAME)
+        workspaces_dir = Path("..", "workspaces-" + st.session_state.settings["repository-name"])
         if "workspace" in st.query_params:
             st.session_state.workspace = Path(workspaces_dir, st.query_params.workspace)
         elif st.session_state.location == "online":
@@ -283,7 +279,7 @@ def render_sidebar(page: str = "") -> None:
         if page == "main":
             st.markdown("🖥️ **Workspaces**")
             # Define workspaces directory outside of repository
-            workspaces_dir = Path("..", "workspaces-"+REPOSITORY_NAME)
+            workspaces_dir = Path("..", "workspaces-"+st.session_state.settings["repository-name"])
             # Online: show current workspace name in info text and option to change to other existing workspace
             if st.session_state.location == "online":
                 # Change workspace...
@@ -374,7 +370,7 @@ You can share this unique workspace ID with other people.
             
         with st.expander("📊 **Resource Utilization**"):
             monitor_hardware()
-            
+
         st.image("assets/OpenMS.png", "powered by")
         #st.logo()
 

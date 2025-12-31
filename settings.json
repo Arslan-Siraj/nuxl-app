@@ -1,6 +1,7 @@
 {
     "app-name": "NuXLApp",
     "version": "0.0.1",
+    "repository-name": "nuxl-app",
     "analytics": {
         "google-analytics": {
             "enabled": false,
