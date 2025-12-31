@@ -52,13 +52,12 @@ jobs:
           mv python-${{ env.PYTHON_VERSION }} streamlit_exe
           cp -r src streamlit_exe
           cp -r content streamlit_exe
-          cp -r docs streamlit_exe
           cp -r assets streamlit_exe
           cp -r example-data streamlit_exe
           cp -r .streamlit streamlit_exe
           cp app.py streamlit_exe
           cp settings.json streamlit_exe
-          cp default-parameters.json streamlit_exe
+          # cp default-parameters.json streamlit_exe
           cp ${{ env.APP_NAME }}.bat streamlit_exe
           
       - name: Generate Readme.txt
