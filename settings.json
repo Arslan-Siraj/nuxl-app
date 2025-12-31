@@ -1,4 +1,6 @@
 {
+    "app-name": "NuXLApp",
+    "version": "0.0.1",
     "analytics": {
         "google-analytics": {
             "enabled": false,

@@ -4,6 +4,7 @@ import shutil
 import sys
 import uuid
 import time
+import psutil
 from typing import Any
 from pathlib import Path
 from streamlit.components.v1 import html
@@ -23,11 +24,22 @@ from src.captcha_ import captcha_control
 # Detect system platform
 OS_PLATFORM = sys.platform
 
-
 # set these variables according to your project
 APP_NAME = "NuXL"
 REPOSITORY_NAME = "nuxl-app"
 
+@st.fragment(run_every=5)
+def monitor_hardware():
+    cpu_progress = psutil.cpu_percent(interval=None) / 100
+    ram_progress = 1 - psutil.virtual_memory().available / psutil.virtual_memory().total
+
+    st.text(f"Ram ({ram_progress * 100:.2f}%)")
+    st.progress(ram_progress)
+
+    st.text(f"CPU ({cpu_progress * 100:.2f}%)")
+    st.progress(cpu_progress)
+
+    st.caption(f"Last fetched at: {time.strftime('%H:%M:%S')}")
 
 def load_params(default: bool = False) -> dict[str, Any]:
     """
@@ -359,8 +371,38 @@ You can share this unique workspace ID with other people.
 **{st.session_state['workspace'].name}**
 """
                 )
+            
+        with st.expander("📊 **Resource Utilization**"):
+            monitor_hardware()
+            
         st.image("assets/OpenMS.png", "powered by")
         #st.logo()
+
+        # Display OpenMS WebApp Template Version from settings.json
+        with st.container():
+            st.markdown(
+                """
+                <style>
+                .version-box {
+                    border: 1px solid #a4a5ad; 
+                    padding: 10px;
+                    border-radius: 0.5rem;
+                    text-align: center;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center; 
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+            version_info = st.session_state.settings["version"]
+            app_name = st.session_state.settings["app-name"]
+            st.markdown(
+                f'<div class="version-box">{app_name}<br>Version: {version_info}</div>',
+                unsafe_allow_html=True,
+            )
+
     return params
 
 def v_space(n: int, col=None) -> None:
