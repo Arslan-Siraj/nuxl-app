@@ -1,9 +1,9 @@
 name: Build executable without Wix
 on:
-  push:
-    branches: 
-      - main
-      - development
+  #push:
+  #  branches: 
+  #    - main
+  #    - development
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
