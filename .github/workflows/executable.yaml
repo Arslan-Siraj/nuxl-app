@@ -1,0 +1,101 @@
+name: Executable
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-executable:
+    runs-on: windows-2022
+
+    env:
+      OPENMS_VERSION: 3.5.0
+      APP_UpgradeCode: "31703de0-3422-444a-a469-8df83635bd6d"
+      TOPP_TOOLS: "OpenNuXL"
+      PYTHON_VERSION: 3.10.0
+      APP_NAME: OpenMS-NuXLApp
+
+    steps:
+      - name: Set up Python (regular distribution)
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup python embeddable version
+        run: |
+          mkdir python-${{ env.PYTHON_VERSION }}
+          curl -O https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/python-${{ env.PYTHON_VERSION }}-embed-amd64.zip
+          unzip python-${{ env.PYTHON_VERSION }}-embed-amd64.zip -d python-${{ env.PYTHON_VERSION }}
+          rm python-${{ env.PYTHON_VERSION }}-embed-amd64.zip
+
+          $PYTHON_DIR="${{ runner.tool_cache }}/Python/${{ env.PYTHON_VERSION }}/x64"
+          $EMBED_DIR="python-${{ env.PYTHON_VERSION }}"
+
+          mkdir -p $EMBED_DIR/Lib/site-packages/tkinter
+          mkdir -p $EMBED_DIR/tcl
+
+          cp -r $PYTHON_DIR/Lib/tkinter/* $EMBED_DIR/Lib/site-packages/tkinter/
+          cp -r $PYTHON_DIR/tcl/* $EMBED_DIR/tcl/
+          cp $PYTHON_DIR/DLLs/_tkinter.pyd $EMBED_DIR/
+          cp $PYTHON_DIR/DLLs/tcl86t.dll $EMBED_DIR/
+          cp $PYTHON_DIR/DLLs/tk86t.dll $EMBED_DIR/
+
+      - name: Install pip
+        run: |
+          curl -O https://bootstrap.pypa.io/get-pip.py
+          ./python-${{ env.PYTHON_VERSION }}/python get-pip.py --no-warn-script-location
+          rm get-pip.py
+
+      - name: Uncomment 'import site' in python310._pth file
+        run: |
+          sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python310._pth
+
+      - name: Install Required Packages
+        run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements.txt --no-warn-script-location
+
+      - name: Set to offline deployment
+        run: |
+          $content = Get-Content -Raw settings.json | ConvertFrom-Json
+          $content.online_deployment = $false
+          $content | ConvertTo-Json -Depth 100 | Set-Content settings.json
+
+      - name: Create .bat file
+        run: |
+          echo " start /min .\python-${{ env.PYTHON_VERSION }}\python -m streamlit run app.py local" > ${{ env.APP_NAME }}.bat
+
+      - name: Create All-in-one executable folder
+        run: |
+          if (Test-Path -Path "streamlit_exe") {
+              Remove-Item -Recurse -Force "streamlit_exe"
+          }
+          mkdir streamlit_exe
+          mv python-${{ env.PYTHON_VERSION }} streamlit_exe
+          cp -r src streamlit_exe
+          cp -r content streamlit_exe
+          cp -r assets streamlit_exe
+          cp -r example-data streamlit_exe
+          cp -r .streamlit streamlit_exe
+          cp app.py streamlit_exe
+          cp settings.json streamlit_exe
+          cp ${{ env.APP_NAME }}.bat streamlit_exe
+
+      - name: Generate Readme.txt
+        shell: bash
+        run: |
+          cat <<EOF > streamlit_exe/Readme.txt
+          Welcome to ${{ env.APP_NAME }} app!
+          To launch the application:
+          1. Navigate to the installation directory.
+          2. Double-click on the file: ${{ env.APP_NAME }}.bat or ${{ env.APP_NAME }} shortcut.
+          Additional Information:
+          - If multiple Streamlit apps are running, you can change the port in the .streamlit/config.toml file.
+            Example:
+              [server]
+              port = 8502
+          Reach out to us:
+          - Join our Discord server for support: https://discord.com/invite/4TAGhqJ7s5
+          - GitHub: https://github.com/Arslan-Siraj/nuxl-app
+          - Website: https://openms.de/
+          Thanks for using ${{ env.APP_NAME }}!
+          EOF
+
+      # ...rest of your steps (WiX install, .wxs generation, candle/light build, zip & upload)...

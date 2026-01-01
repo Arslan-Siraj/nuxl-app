@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
   
 env:
-  OPENMS_VERSION: 3.2.0 
+  OPENMS_VERSION: 3.5.0 
   # Define unique GUID for UpgradeCode
   APP_UpgradeCode: "31703de0-3422-444a-a469-8df83635bd6d"
   # Define needed TOPP tools here
@@ -17,25 +17,23 @@ env:
 
 jobs:
   build-openms:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        repository: Arslan-Siraj/OpenMS #OpenMS/OpenMS
-        ref: feature/NuXL #release/${{ env.OPENMS_VERSION }}
+        repository: OpenMS/OpenMS
+        ref: release/${{ env.OPENMS_VERSION }}
         path: 'OpenMS'
 
-    - name: Install Qt
+    - name: Install Qt (Windows)
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.2.*' # 5.12.7 is broken https://bugreports.qt.io/browse/QTBUG-81715, > 5.15.2 is not available on official archives (https://github.com/miurahr/aqtinstall/issues/636)
-        host: 'windows' # default: win64_msvc2017_64
-        target: 'desktop'
-        install-deps: 'true'
+        version: '6.8.3'    ## Note this version is build with win64_msvc2022_64 and should always match what we use
+        arch: 'win64_msvc2022_64'
         cache: 'false'
-        aqtversion: '==3.1.*'
+        archives: 'qtsvg qtimageformats qtbase'
 
     # https://github.com/marketplace/actions/visual-studio-shell
     - name: Set up Visual Studio shell
@@ -46,7 +44,8 @@ jobs:
     - name: Setup build tools
       shell: bash
       run: |
-        choco install ccache ninja cmake
+        choco install ccache ninja -y --no-progress
+        choco install cmake --version=3.31.1 -y --no-progress --force
         ## GH CLI "SHOULD BE" installed. Sometimes I had to manually install nonetheless. Super weird.
         # https://github.com/actions/runner-images/blob/main/images/win/scripts/Installers/Install-GitHub-CLI.ps1
         echo "C:/Program Files (x86)/GitHub CLI" >> $GITHUB_PATH
@@ -82,6 +81,12 @@ jobs:
         rm contrib_build-Windows.tar.gz
         ls
 
+    - name: Add contrib to PATH
+      shell: bash
+      run: |
+        # Add contrib library path for runtime DLL resolution
+        echo "${{ github.workspace }}/OpenMS/contrib/lib" >> $GITHUB_PATH
+
     - name: Setup ccache cache
       uses: actions/cache@v4
       with:
@@ -103,7 +108,7 @@ jobs:
           # add third-party binaries to PATH
           # use flat THIRDPARTY structure
           mkdir -p _thirdparty
-          cp -R OpenMS/THIRDPARTY/Windows/64bit/* _thirdparty/
+          cp -R OpenMS/THIRDPARTY/Windows/x86_64/* _thirdparty/
           cp -R OpenMS/THIRDPARTY/All/* _thirdparty/
           # add third-party binaries to PATH
           for thirdpartytool in ${{ github.workspace }}/_thirdparty/*
@@ -115,9 +120,9 @@ jobs:
       shell: bash
       run: |
           mkdir $GITHUB_WORKSPACE/OpenMS/bld/
+          bash OpenMS/tools/ci/capture-env.sh -v $GITHUB_WORKSPACE/OpenMS/bld/CMakeCache.txt
           ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cibuild.cmake
       env:
-          #OS_PREFIX_PATH: "${{ env.Qt5_DIR }}/lib/cmake;${{ env.Qt5_DIR }}"
           OPENMS_CONTRIB_LIBS: "${{ github.workspace }}/OpenMS/contrib"
           CI_PROVIDER: "GitHub-Actions"
           CMAKE_GENERATOR: "Ninja"
@@ -127,6 +132,7 @@ jobs:
           ENABLE_TOPP_TESTING: "ON"
           ENABLE_CLASS_TESTING: "ON"
           WITH_GUI: "OFF"
+          WITH_PARQUET: "OFF"
           ADDRESS_SANITIZER: "Off"
           BUILD_TYPE: "Release"
           OPENMP: "Off"
@@ -140,24 +146,24 @@ jobs:
           CCACHE_COMPRESSLEVEL: 12
           CCACHE_MAXSIZE: 400M
 
-    #- name: Test Windows
-    #  shell: bash
-    #  run: ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/citest.cmake
-    #  env:
-    #      SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
-    #     CI_PROVIDER: "GitHub-Actions"
-    #      BUILD_NAME: "${{ env.RUN_NAME }}-Win64-class-topp-${{ github.run_number }}"
+    - name: Test Windows
+      shell: bash
+      run: ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/citest.cmake
+      env:
+          SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
+          CI_PROVIDER: "GitHub-Actions"
+          BUILD_NAME: "${{ env.RUN_NAME }}-Win64-class-topp-${{ github.run_number }}"
 
-    #- name: Package
-    #  shell: bash
-    #  run: |
-    #      ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cipackage.cmake
-    #  env:
-    #      SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
-    #      PACKAGE_TYPE: zip
-    #      SEARCH_ENGINES_DIRECTORY: "${{ github.workspace }}/_thirdparty"
-    #      CI_PROVIDER: "GitHub-Actions"
-    #      CPACK_PACKAGE_FILE_NAME: "openms-package"
+    - name: Package
+      shell: bash
+      run: |
+          ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cipackage.cmake
+      env:
+          SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
+          PACKAGE_TYPE: zip
+          SEARCH_ENGINES_DIRECTORY: "${{ github.workspace }}/_thirdparty"
+          CI_PROVIDER: "GitHub-Actions"
+          CPACK_PACKAGE_FILE_NAME: "openms-package"
 
     - name: Upload package as artifact
       uses: actions/upload-artifact@v4
@@ -167,6 +173,7 @@ jobs:
           #${{ github.workspace }}/OpenMS/bld/bin/*
           #${{ github.workspace }}/_thirdparty/*
           ${{ github.workspace }}/OpenMS/bld/bin/OpenNuXL.exe
+          ${{ github.workspace }}/OpenMS/bld/bin/FileConverter.exe
           ${{ github.workspace }}/OpenMS/bld/bin/PercolatorAdapter.exe
           ${{ github.workspace }}/OpenMS/bld/bin/*.dll
           ${{ github.workspace }}/_thirdparty/*.exe
@@ -174,11 +181,11 @@ jobs:
           ${{ github.workspace }}/_thirdparty/Percolator/**
               
   build-executable:
-    runs-on: windows-latest
+    runs-on: windows-2022
     needs: build-openms
 
     env:
-      PYTHON_VERSION: 3.11.0
+      PYTHON_VERSION: 3.10.0
       APP_NAME: OpenMS-NuXLApp
 
     steps:
@@ -191,9 +198,9 @@ jobs:
         name: openms-package
         path: openms-package
 
-    #- name: List files in openms-package
-    #  run: |
-    #    ls -R openms-package
+    - name: List files in openms-package
+      run: |
+        ls -R openms-package
 
     - name: Extract bin and share from package
       run: |
@@ -253,9 +260,9 @@ jobs:
         ./python-${{ env.PYTHON_VERSION }}/python get-pip.py --no-warn-script-location
         rm get-pip.py
 
-    - name: Uncomment 'import site' in python311._pth file
+    - name: Uncomment 'import site' in python310._pth file
       run: |
-        sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python311._pth
+        sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python310._pth
 
     - name: Install Required Packages
       run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements.txt --no-warn-script-location

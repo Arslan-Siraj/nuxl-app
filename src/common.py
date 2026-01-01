@@ -119,7 +119,7 @@ def page_setup(page: str = "") -> dict[str, Any]:
     # Set Streamlit page configurations
     st.set_page_config(
         page_title=st.session_state.settings["app-name"],
-        page_icon="assets/OpenMS.png",
+        page_icon="assets/openms_transparent_bg_logo.svg",
         layout="wide",
         initial_sidebar_state="auto",
         menu_items=None,
@@ -238,6 +238,12 @@ def page_setup(page: str = "") -> dict[str, Any]:
     
     Path(st.session_state.workspace,
          "result-files").mkdir(parents=True, exist_ok=True)
+    
+    Path(st.session_state.workspace,
+         "nuxl-rescore-files").mkdir(parents=True, exist_ok=True)
+
+    Path(st.session_state.workspace,
+         "example-data-files").mkdir(parents=True, exist_ok=True)
     
     # Render the sidebar
     params = render_sidebar(page)
@@ -367,13 +373,12 @@ You can share this unique workspace ID with other people.
 **{st.session_state['workspace'].name}**
 """
                 )
-            
         with st.expander("📊 **Resource Utilization**"):
             monitor_hardware()
-
-        st.image("assets/OpenMS.png", "powered by")
-        #st.logo()
-
+            
+        st.image("assets/OpenMS_new.png", "powered by")
+            
+        
         # Display OpenMS WebApp Template Version from settings.json
         with st.container():
             st.markdown(

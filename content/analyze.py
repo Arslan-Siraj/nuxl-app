@@ -73,7 +73,7 @@ if "selected-fasta-files" not in st.session_state:
     st.session_state["selected-fasta-files"] = params.get("selected-fasta-files", [])
 
 # make sure mzML example files in current session state
-load_example_mzML_files()
+#load_example_mzML_files()
 
 # take mzML files from current session file
 mzML_files_ = [f.name for f in Path(st.session_state.workspace, "mzML-files").iterdir()]
@@ -81,7 +81,7 @@ mzML_files_ = [f.name for f in Path(st.session_state.workspace, "mzML-files").it
 #delete_files(directory = Path(st.session_state.workspace, "mzML-files"), remove_files_end_with = '.raw.mzML')
 
 # make sure fasta example files in current session state
-load_example_fasta_files()
+#load_example_fasta_files()
 
 # take fasta files from current session file
 fasta_files = [f.name for f in Path(st.session_state.workspace,"fasta-files").iterdir()]
@@ -91,12 +91,15 @@ if 'Trypsin/P' in NuXL_config['enzyme']['restrictions']:
     NuXL_config['enzyme']['restrictions'].remove('Trypsin/P')
     NuXL_config['enzyme']['restrictions'].insert(0, 'Trypsin/P')
 
+mzML_file_path = None
+database_file_path = None
+
 with st.form("fasta-upload", clear_on_submit=False):
 
     # selected mzML file from mzML files list
     selected_mzML_file = st.selectbox(
         "choose mzML/raw file",
-        [item for item in mzML_files_ if not item.endswith(".csv")]
+        [item for item in mzML_files_ if not (item.endswith(".csv") or item.endswith(".mgf"))]
         ,
         help="If file not here, please upload at File Upload"
     )
@@ -188,11 +191,11 @@ with st.form("fasta-upload", clear_on_submit=False):
 
     with cols[1]:
         scoring = cols[1].radio(
-        "select the scoring method",
-        [NuXL_config['scoring']['restrictions'][1], NuXL_config['scoring']['restrictions'][0]],
-        help=NuXL_config['scoring']['description'] + " default: "+ NuXL_config['scoring']['default'],
-        key="scoring"
-        )
+            "scoring method",
+            [NuXL_config['scoring']['restrictions'][1], NuXL_config['scoring']['restrictions'][0]],
+            help=NuXL_config['scoring']['description'] + " default: "+ NuXL_config['scoring']['default'],
+            key="scoring"
+            )
  
     with st.expander("**Advanced parameters**"):
         
@@ -248,15 +251,10 @@ with st.form("fasta-upload", clear_on_submit=False):
                     # Invalid input: Display an error message
                     st.error(f"Invalid XL FDR format: {e} Please provide input in the format [0.01, 0.1, 1.0] or a single float between 0.00 and 1.00.")
     
-    submit_button = st.form_submit_button("Run-analysis", type="primary")
+    submit_button = st.form_submit_button("Run-analysis", type="primary",  disabled=mzML_file_path is None or database_file_path is None)
 
 # out file path
 result_dir: Path = Path(st.session_state.workspace, "result-files")
-
-# create same output file path name as input file path
-mzML_file_name = os.path.basename(mzML_file_path)
-protocol_name = os.path.splitext(mzML_file_name)[0]
-result_path = os.path.join(result_dir, protocol_name + ".idXML")
 
 ##################################### NuXL command (subprocess) ############################
 
@@ -288,6 +286,11 @@ if submit_button:
 
     # with st.spinner("Running analysis... Please wait until analysis done 😑"): #without status/ just spinner button
     with st.status("Running analysis... Please wait until analysis done 😑"):
+       
+        # create same output file path name as input file path
+        mzML_file_name = os.path.basename(mzML_file_path)
+        protocol_name = os.path.splitext(mzML_file_name)[0]
+        result_path = os.path.join(result_dir, protocol_name + ".idXML")
 
         if mzML_file_path.endswith(".raw.mzML"):
             st.warning(f"(.raw.mzML) not supported, please select (.raw) or (.mzML) format",  icon="ℹ️")
@@ -302,7 +305,7 @@ if submit_button:
 
                 args = [OpenNuXL_exec, "-ThermoRaw_executable", thermo_exec_path, "-in", mzML_file_path, "-database", database_file_path, "-out", result_path, "-NuXL:presets", preset, 
                                 "-NuXL:length", length, "-NuXL:scoring", scoring, "-precursor:mass_tolerance",  Precursor_MT, "-precursor:mass_tolerance_unit",  Precursor_MT_unit,
-                                "-fragment:mass_tolerance",  Fragment_MT, "-fragment:mass_tolerance_unit",  Fragment_MT_unit,
+                                "-fragment:mass_tolerance",  Fragment_MT, "-fragment:mass_tolerance_unit",  Fragment_MT_unit, "-threads", str(30),
                                 "-peptide:min_size", peptide_min, "-peptide:max_size", peptide_max, "-peptide:missed_cleavages", Missed_cleavages, "-peptide:enzyme", Enzyme,
                                 "-modifications:variable_max_per_peptide", Variable_max_per_peptide,"-report:peptideFDR", peptideFDR
                                 ]
@@ -315,7 +318,7 @@ if submit_button:
                 thermo_exec_path = "/thirdparty/ThermoRawFileParser/ThermoRawFileParser.exe"
                 # In docker it executable on path
                 args = ["OpenNuXL", "-ThermoRaw_executable", thermo_exec_path, "-in", mzML_file_path, "-database", database_file_path, "-out", result_path, "-NuXL:presets", preset, 
-                            "-NuXL:length", length, "-NuXL:scoring", scoring, "-precursor:mass_tolerance",  Precursor_MT, "-precursor:mass_tolerance_unit",  Precursor_MT_unit,
+                            "-NuXL:length", length, "-NuXL:scoring", scoring, "-precursor:mass_tolerance",  Precursor_MT, "-precursor:mass_tolerance_unit",  Precursor_MT_unit, 
                             "-fragment:mass_tolerance",  Fragment_MT, "-fragment:mass_tolerance_unit",  Fragment_MT_unit,"-peptide:min_size", peptide_min, "-peptide:max_size",peptide_max, "-peptide:missed_cleavages",Missed_cleavages, "-peptide:enzyme", Enzyme,
                             "-modifications:variable_max_per_peptide", Variable_max_per_peptide,"-report:peptideFDR", peptideFDR                            
                             ]
@@ -343,8 +346,8 @@ if submit_button:
             variables = []  
 
             # want to see the command values and argues
-            #message = f"Running '{' '.join(args)}'"
-            #st.info(message)
+            message = f"Running '{' '.join(args)}'"
+            st.info(message)
             st.info(f"Analyzing {mzML_file_name}",  icon="ℹ️")
 
             # run subprocess command
@@ -357,7 +360,7 @@ if submit_button:
             # terminate_flag = threading.Event()
             # thread = threading.Thread(target=run_subprocess, args=(args, variables, result_dict))
             # thread.start()
-            # thread.join()
+            # thread.join()<
 
         delete_files(directory = Path(st.session_state.workspace, "mzML-files"), remove_files_end_with = '.raw.mzML')
 
@@ -424,7 +427,9 @@ if submit_button:
 
         # then download link for identification file of above criteria 
         download_selected_result_files(identification_files, f":arrow_down: {protocol_name}_XL_identification_files")
-    
+
+        st.success("⚡️ **Analyzing with NuXL Completed Successfully!** ⚡️")
+
     else:
         # Display error message
         st.error(

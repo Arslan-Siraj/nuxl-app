@@ -1,6 +1,24 @@
 import streamlit as st
 import subprocess
 
+SUPPRESSED_PATTERNS = [
+    "UserWarning:",
+    "WARNING:tensorflow:",
+    "Warnings.warn(",
+    "from pkg_resources",
+    "pkg_resources is deprecated",
+    "OPENMS_DATA_PATH",
+    "tensorflow/",
+    "Could not find cuda drivers",
+    "GPU will not be used",
+    "NUMA node",
+    "cuda",
+    "warnings",
+    "To enable the following instructions",
+    "FutureWarning",
+    "x = re.sub(pattern, '', string_)"
+]
+
 def run_subprocess(args: list[str], variables: list[str], result_dict: dict) -> None:
     """
     Run a subprocess and capture its output.
@@ -38,10 +56,16 @@ def run_subprocess(args: list[str], variables: list[str], result_dict: dict) -> 
         if error == '' and process.poll() is not None:
             break
         if error:
-            # Print every line of standard error on the Streamlit page, marking it as an error
-            st.error(error.strip())
-            # Append the line to store in the log of errors
-            stderr_.append(error.strip())
+            line = error.strip()
+
+            # suppress known non-fatal warnings
+            if any(p in line for p in SUPPRESSED_PATTERNS):
+                stderr_.append(line)   # keep in log if you want
+                continue
+
+            # real errors only
+            st.error(line)
+            stderr_.append(line)
 
     # Check if the subprocess ran successfully (return code 0)
     if process.returncode == 0:

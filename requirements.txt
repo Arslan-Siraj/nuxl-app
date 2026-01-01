@@ -2,13 +2,17 @@
 # note that it is much more restricted in terms of installing third-parties / etc.
 # preferably use the batteries included or simple docker file for local hosting
 streamlit==1.38.0
+typing-extensions==4.5.0
+altair==5.0.1
+pandas==1.5.3
+numpy==1.22.4
+plotly==5.22.0
+captcha==0.7.1
 streamlit-plotly-events==0.0.6
 streamlit-aggrid==0.3.4.post3
-pandas==2.0.3
-numpy==1.26.4
-plotly==5.22.0
-pyopenms==3.2.0
-captcha==0.5.0
+nuxl-rescore==0.2.0
+psutil==7.2.1
+pyopenms==3.1.0
 #xlsxwriter
 ## for pyopenms nightly
 # --index-url https://pypi.cs.uni-tuebingen.de/simple/

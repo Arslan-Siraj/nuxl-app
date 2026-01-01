@@ -8,14 +8,14 @@
 # prune unused images/etc. to free disc space (e.g. might be needed on gitpod). Use with care.: docker system prune --all --force
 
 FROM ubuntu:22.04 AS setup-build-system
-ARG OPENMS_REPO=https://github.com/Arslan-Siraj/OpenMS.git # https://github.com/OpenMS/OpenMS.git # 
-ARG OPENMS_BRANCH=feature/NuXL
+ARG OPENMS_REPO=https://github.com/OpenMS/OpenMS.git
+ARG OPENMS_BRANCH=release/3.5.0
 ARG PORT=8501
 # GitHub token to download latest OpenMS executable for Windows from Github action artifact.
 ARG GITHUB_TOKEN
 ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
-ARG GITHUB_USER=Arslan-Siraj
+ARG GITHUB_USER=OpenMS
 # Streamlit app Gihub repository name (to download artifact from).
 ARG GITHUB_REPO=nuxl-app
 
@@ -30,19 +30,8 @@ RUN apt-get install -y --no-install-recommends --no-install-suggests libboost-da
                                                                      libboost-iostreams1.74-dev \
                                                                      libboost-regex1.74-dev \
                                                                      libboost-math1.74-dev \
-                                                                     libboost-random1.74-d
-
-RUN apt-get install -y --no-install-recommends --no-install-suggests qtbase5-dev libqt5svg5-dev libqt5opengl5-dev
-
-#RUN apt-get update && apt-get install -y --no-install-recommends \
-#    qt6-base-dev \
-#    qt6-tools-dev-tools \
-#    libqt6svg6-dev \
-#    libqt6opengl6-dev
-
-# apt-get install -y --no-install-recommends --no-install-suggests  install qqtbase5-dev libqt5svg5-dev libqt5opengl5-dev
-# libqt6svg6-dev qt6-base-dev qt6-base-dev-tools 
-# 
+                                                                     libboost-random1.74-dev
+RUN apt-get install -y --no-install-recommends --no-install-suggests qt6-base-dev libqt6svg6-dev libqt6opengl6-dev libqt6openglwidgets6 libgl-dev
 
 # Install Github CLI
 RUN (type -p wget >/dev/null || (apt-get update && apt-get install wget -y)) \
@@ -61,20 +50,21 @@ RUN wget -q \
     && rm -f Miniforge3-Linux-x86_64.sh
 RUN mamba --version
 
-# Setup mamba environment.
 COPY environment.yml ./environment.yml
 RUN mamba env create -f environment.yml
 RUN echo "mamba activate streamlit-env" >> ~/.bashrc
 SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
 SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
 
+# Setup mamba environment.
+#RUN mamba create -n streamlit-env python=3.10
+#RUN echo "mamba activate streamlit-env" >> ~/.bashrc
+#SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
+#SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
+
 # Install up-to-date cmake via mamba and packages for pyOpenMS build.
 RUN mamba install cmake
-RUN pip install --upgrade pip && python -m pip install -U setuptools nose Cython autowrap pandas numpy pytest
-
-# Increase Git buffer size and timeout
-RUN git config --global http.postBuffer 524288000
-RUN git config --global http.lowSpeedTime 999999
+RUN pip install --upgrade pip && python -m pip install -U setuptools nose cython autowrap pandas numpy pytest
 
 # Clone OpenMS branch and the associcated contrib+thirdparties+pyOpenMS-doc submodules.
 RUN git clone --recursive --depth=1 -b ${OPENMS_BRANCH} --single-branch ${OPENMS_REPO} && cd /OpenMS
@@ -84,11 +74,11 @@ WORKDIR /OpenMS
 RUN mkdir /thirdparty && \
     git submodule update --init THIRDPARTY && \
     cp -r THIRDPARTY/All/* /thirdparty && \
-    cp -r THIRDPARTY/Linux/64bit/* /thirdparty && \
+    cp -r THIRDPARTY/Linux/x86_64/* /thirdparty && \
     chmod -R +x /thirdparty
 ENV PATH="/thirdparty/LuciPHOr2:/thirdparty/MSGFPlus:/thirdparty/Sirius:/thirdparty/ThermoRawFileParser:/thirdparty/Comet:/thirdparty/Fido:/thirdparty/MaRaCluster:/thirdparty/MyriMatch:/thirdparty/OMSSA:/thirdparty/Percolator:/thirdparty/SpectraST:/thirdparty/XTandem:/thirdparty/crux:${PATH}"
 
-# Build OpenMS
+# Build OpenMS and pyOpenMS.
 FROM setup-build-system AS compile-openms
 WORKDIR /
 
@@ -96,11 +86,8 @@ WORKDIR /
 RUN mkdir /openms-build
 WORKDIR /openms-build
 
-RUN apt-get -y update
-RUN apt-get install -y libqt6svg6-dev qt6-base-dev qt6-base-dev-tools
-
 # Configure.
-RUN /bin/bash -c "cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_PREFIX_PATH='/OpenMS/contrib-build/;/usr/;/usr/local;/usr/lib/qt6' -DHAS_XSERVER=OFF -DBOOST_USE_STATIC=OFF -DPYOPENMS=OFF ../OpenMS -DPY_MEMLEAK_DISABLE=On"
+RUN /bin/bash -c "cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_PREFIX_PATH='/OpenMS/contrib-build/;/usr/;/usr/local' -DHAS_XSERVER=OFF -DBOOST_USE_STATIC=OFF -DPYOPENMS=ON ../OpenMS -DPY_MEMLEAK_DISABLE=On"
 
 # Build TOPP tools and clean up.
 RUN make -j4 TOPP
@@ -110,6 +97,17 @@ RUN rm -rf src doc CMakeFiles
 #RUN make -j4 pyopenms
 #WORKDIR /openms-build/pyOpenMS
 #RUN pip install dist/*.whl
+
+# Install other dependencies (excluding pyopenms)
+#COPY requirements.txt ./requirements.txt 
+#RUN grep -Ev '^pyopenms([=<>!~].*)?$' requirements.txt > requirements_cleaned.txt && mv requirements_cleaned.txt requirements.txt
+#RUN pip install -r requirements.txt
+
+#RUN pip install nuxl-rescore==0.2.0
+# Copy the package into the image
+COPY ./nuxl_rescore/nuxl_rescore-0.3.0.tar.gz /tmp/nuxl_rescore-0.3.0.tar.gz
+# Install it
+RUN pip install /tmp/nuxl_rescore-0.3.0.tar.gz
 
 WORKDIR /
 RUN mkdir openms
@@ -130,39 +128,6 @@ ENV OPENMS_DATA_PATH="/openms/share/"
 # Remove build directory.
 RUN rm -rf openms-build
 
-# Clone OpenMS branch and the associcated contrib+thirdparties+pyOpenMS-doc submodules.
-RUN git clone --recursive --depth=1 -b develop --single-branch ${OPENMS_REPO} && cd /OpenMS
-
-# Pull Linux compatible third-party dependencies and store them in directory thirdparty.
-WORKDIR /OpenMS
-RUN git checkout develop
-
-#RUN mkdir /thirdparty && \
-#    git submodule update --init THIRDPARTY && \
-#    cp -r THIRDPARTY/All/* /thirdparty && \
-#    cp -r THIRDPARTY/Linux/64bit/* /thirdparty && \
-#    chmod -R +x /thirdparty
-#ENV PATH="/thirdparty/LuciPHOr2:/thirdparty/MSGFPlus:/thirdparty/Sirius:/thirdparty/ThermoRawFileParser:/thirdparty/Comet:/thirdparty/Fido:/thirdparty/MaRaCluster:/thirdparty/MyriMatch:/thirdparty/OMSSA:/thirdparty/Percolator:/thirdparty/SpectraST:/thirdparty/XTandem:/thirdparty/crux:${PATH}"
-
-# Build pyopenms
-#FROM setup-build-system AS compile-pyopenms
-#WORKDIR /
-
-# Set up build directory.
-RUN mkdir /openms-build_py
-WORKDIR /openms-build_py
-
-RUN apt-get -y update
-RUN apt-get install -y libqt6svg6-dev qt6-base-dev qt6-base-dev-tools
-
-# Configure.
-RUN /bin/bash -c "cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_PREFIX_PATH='/OpenMS/contrib-build/;/usr/;/usr/local;/usr/lib/qt6' -DHAS_XSERVER=OFF -DBOOST_USE_STATIC=OFF -DPYOPENMS=ON ../OpenMS -DPY_MEMLEAK_DISABLE=On"
-
-# Build pyOpenMS wheels and install via pip.
-RUN make -j4 pyopenms
-WORKDIR /openms-build_py/pyOpenMS
-RUN pip install dist/*.whl
-
 # Prepare and run streamlit app.
 FROM compile-openms AS run-app
 # Create workdir and copy over all streamlit related files/folders.
@@ -181,7 +146,7 @@ COPY hooks/ /app/hooks
 COPY gdpr_consent/ /app/gdpr_consent
 
 # add cron job to the crontab
-RUN echo "0 3 * * * /root/mambaforge/envs/streamlit-env/bin/python /app/clean-up-workspaces.py >> /app/clean-up-workspaces.log 2>&1" | crontab -
+RUN echo "0 3 * * * /root/miniforge3/envs/streamlit-env/bin/python /app/clean-up-workspaces.py >> /app/clean-up-workspaces.log 2>&1" | crontab -
 
 # create entrypoint script to start cron service and launch streamlit app
 RUN echo "#!/bin/bash" > /app/entrypoint.sh && \
@@ -197,15 +162,16 @@ RUN mamba run -n streamlit-env python hooks/hook-analytics.py
 # Set Online Deployment
 RUN jq '.online_deployment = true' settings.json > tmp.json && mv tmp.json settings.json
 
-# Download latest OpenMS App executable for Windows from Github actions workflow.
+# Download latest OpenMS App executable as a ZIP file
 RUN if [ -n "$GH_TOKEN" ]; then \
         echo "GH_TOKEN is set, proceeding to download the release asset..."; \
-        gh run download -R ${GITHUB_USER}/${GITHUB_REPO} $(gh run list -R ${GITHUB_USER}/${GITHUB_REPO} -b main -e push -s completed -w "Build executable for Windows" --json databaseId -q '.[0].databaseId') -n OpenMS-App --dir /app; \
+        gh release download -R ${GITHUB_USER}/${GITHUB_REPO} -p "OpenMS-App.zip" -D /app; \
     else \
         echo "GH_TOKEN is not set, skipping the release asset download."; \
     fi
 
+
 # Run app as container entrypoint.
 EXPOSE $PORT
-
 ENTRYPOINT ["/app/entrypoint.sh"]
+

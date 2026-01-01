@@ -6,6 +6,7 @@ from src.view import plot_ms2_spectrum, plot_ms2_spectrum_full
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, ColumnsAutoSizeMode
 from src.captcha_ import *
 from pyopenms import *
+import re
 
 params = page_setup()
 
@@ -28,6 +29,7 @@ def process_mzML_file(filepath):
     Returns:
     MSExperiment: An MSExperiment object containing the normalized MS2 spectra.
     """
+    print("process mzML file: ", filepath)
 
     try:
         # Initialize an MSExperiment object
@@ -85,12 +87,23 @@ def get_mz_intensities_from_ms2(MS2_spectras, native_id):
     # If the native ID is not found, return None
     return None
 
-import re
+#def clean_filename_with_regex(filename):
+    # Pattern to match "_perc_X.XXXX_XLs.idXML" or "_X.XXXX_XLs.idXML"
+#    pattern = r"(_perc_\d\.\d{4}_XLs\.idXML|_\d\.\d{4}_XLs\.idXML)"
+#    return re.sub(pattern, "", filename)
 
 def clean_filename_with_regex(filename):
-    # Pattern to match "_perc_X.XXXX_XLs.idXML" or "_X.XXXX_XLs.idXML"
-    pattern = r"(_perc_\d\.\d{4}_XLs\.idXML|_\d\.\d{4}_XLs\.idXML)"
-    return re.sub(pattern, "", filename)
+    # Remove feature prefixes at the beginning of the filename
+    prefix_pattern = r"^(RT_feat_|RT_Int_feat_|Int_feat_|updated_feat_)"
+
+    # Remove score/XL suffix patterns
+    suffix_pattern = r"(_perc_\d\.\d{4}_XLs\.idXML|_\d\.\d{4}_XLs\.idXML)"
+
+    filename = re.sub(prefix_pattern, "", filename)
+    filename = re.sub(suffix_pattern, "", filename)
+
+    return filename
+
 
 ########################
 
@@ -114,11 +127,13 @@ tabs = st.tabs(tabs)
 with tabs[0]:  
 
     #make sure load all example result files
-    load_example_result_files()
+    #load_example_result_files()
     # take all .idXML files in current session files; .idXML is CSMs 
     session_files = [f.name for f in Path(st.session_state.workspace,"result-files").iterdir() if (f.name.endswith(".idXML") and "_XLs" in f.name)]
     # select box to select .idXML file to see the results
     selected_file = st.selectbox("choose a currently protocol file to view",session_files)
+
+    #print("selected_file: ", selected_file)
 
     #current workspace session path
     workspace_path = Path(st.session_state.workspace)
@@ -137,6 +152,7 @@ with tabs[0]:
             # Remove the out pattern of idxml
             #file_name_wout_out = remove_substrings(selected_file, nuxl_out_pattern)
             file_name_wout_out = clean_filename_with_regex(selected_file)
+            #print("file_name_wout_out: ", file_name_wout_out)
             
             if file_name_wout_out == "Example": 
                 file_name_wout_out = "Example_RNA_UV_XL"
@@ -152,7 +168,7 @@ with tabs[0]:
                 if CSM_['NuXL:NA'].str.contains('none').any():
                     st.warning("nonXL CSMs found")  
                 else:
-                
+                    
                     # provide dataframe
                     gb = GridOptionsBuilder.from_dataframe(CSM_[list(CSM_.columns.values)])
 
@@ -176,10 +192,11 @@ with tabs[0]:
 
                     if selected_row:
                         # Create a dictionary of annotation features
-                        annotation_data_idxml = {'intarray': [float(value) for value in {selected_row[0]['intensities']}.pop().split(',')],
-                                'mzarray': [float(value) for value in {selected_row[0]['mz_values']}.pop().split(',')],
+                        annotation_data_idxml = {'mzarray': [float(value) for value in {selected_row[0]['mz_values']}.pop().split(',')],
                                 'anotarray': [str(value) for value in {selected_row[0]['ions']}.pop().split(',')]
                             }
+
+                        #print("==>>> length of annotation_data_idxml: ", len(annotation_data_idxml['anotarray']), "\n-------------\n")
                         
                         #annotation_data_idxml_df = pd.DataFrame(annotation_data_idxml)
                         #annotation_data_idxml_df.to_csv(str(selected_row[0]['ScanNr']) + "_idxml_annot.csv")
@@ -189,29 +206,35 @@ with tabs[0]:
                             mz_full, inten_full = get_mz_intensities_from_ms2(MS2_spectras=MS2, native_id=selected_row[0]['SpecId'])
 
                             # Convert annotation_data into a dictionary for efficient matching
-                            annotation_dict = {(round(mz, 6), round(i, 6)): anot for i, mz, anot in zip(annotation_data_idxml['intarray'], annotation_data_idxml['mzarray'], annotation_data_idxml['anotarray'])}
+                            annotation_dict = {(round(mz, 6)): anot for mz, anot in zip(annotation_data_idxml['mzarray'], annotation_data_idxml['anotarray'])}
                             
+                            #print("==>>> annotation_dict idxml: ", annotation_dict , "\n-------------\n")
                             # Annotate the data
                             annotation_data = []
                             for intensity, mz in zip(inten_full, mz_full):
                                 mz_r = round(float(mz), 6)
-                                int_r = round(float(intensity), 6)
 
-                                annotation = annotation_dict.get((mz_r, int_r), ' ')
+                                annotation = annotation_dict.get(mz_r, ' ')
 
                                 annotation_data.append({
-                                    'mzarray': mz_r,
-                                    'intarray': int_r,
+                                    'mzarray': mz,
+                                    'intarray': intensity,
                                     'anotarray': annotation
                                 }) 
-                        
+
+                            #n_non_empty = len([
+                            #                    entry for entry in annotation_data if entry['anotarray'] != ' '
+                            #                ])
+                            #print("==>>> annotated: ", n_non_empty , "\n-------------\n")
+                            
                         if MS2 is None:
                             annotation_data = annotation_data_idxml # just provide the annotated peaks
- 
+                        
                         # Check if the lists are not empty
                         if annotation_data:
                             # Create the DataFrame
                             annotation_df = pd.DataFrame(annotation_data)
+                            annotation_df.to_csv(str(selected_row[0]['ScanNr']) + "_idxml_annot_full.csv")
                             # title of spectra
                             spectra_name = os.path.splitext(selected_file)[0] +" Scan# " + str({selected_row[0]['ScanNr']}).strip('{}') + " Pep: " + str({selected_row[0]['Peptide']}).strip('{}\'') +  " + " +str ({selected_row[0]['NuXL:NA']}).strip('{}\'')
                             # generate ms2 spectra
@@ -384,7 +407,7 @@ with tabs[0]:
 #with "Result files" 
 with tabs[1]:
     #make sure to load all results example files
-    load_example_result_files()
+    #load_example_result_files()
 
     if any(Path(result_dir).iterdir()):
         v_space(2)
@@ -455,3 +478,4 @@ with tabs[2]:
 
 # At the end of each page, always save parameters (including any changes via widgets with key)
 save_params(params)
+
