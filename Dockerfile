@@ -17,7 +17,7 @@ ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
 ARG GITHUB_USER=OpenMS
 # Streamlit app Gihub repository name (to download artifact from).
-ARG GITHUB_REPO=nuxl-app
+ARG GITHUB_REPO=streamlit-template
 
 USER root
 
@@ -50,17 +50,11 @@ RUN wget -q \
     && rm -f Miniforge3-Linux-x86_64.sh
 RUN mamba --version
 
-COPY environment.yml ./environment.yml
-RUN mamba env create -f environment.yml
+# Setup mamba environment.
+RUN mamba create -n streamlit-env python=3.10
 RUN echo "mamba activate streamlit-env" >> ~/.bashrc
 SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
 SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
-
-# Setup mamba environment.
-#RUN mamba create -n streamlit-env python=3.10
-#RUN echo "mamba activate streamlit-env" >> ~/.bashrc
-#SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
-#SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
 
 # Install up-to-date cmake via mamba and packages for pyOpenMS build.
 RUN mamba install cmake
@@ -99,11 +93,10 @@ RUN rm -rf src doc CMakeFiles
 #RUN pip install dist/*.whl
 
 # Install other dependencies (excluding pyopenms)
-#COPY requirements.txt ./requirements.txt 
-#RUN grep -Ev '^pyopenms([=<>!~].*)?$' requirements.txt > requirements_cleaned.txt && mv requirements_cleaned.txt requirements.txt
-#RUN pip install -r requirements.txt
+COPY requirements.txt ./requirements.txt 
+RUN grep -Ev '^pyopenms([=<>!~].*)?$' requirements.txt > requirements_cleaned.txt && mv requirements_cleaned.txt requirements.txt
+RUN pip install -r requirements.txt
 
-#RUN pip install nuxl-rescore==0.2.0
 # Copy the package into the image
 COPY ./nuxl_rescore/nuxl_rescore-0.3.0.tar.gz /tmp/nuxl_rescore-0.3.0.tar.gz
 # Install it
@@ -132,6 +125,7 @@ RUN rm -rf openms-build
 FROM compile-openms AS run-app
 # Create workdir and copy over all streamlit related files/folders.
 
+# note: specifying folder with slash as suffix and repeating the folder name seems important to preserve directory structure
 # note: specifying folder with slash as suffix and repeating the folder name seems important to preserve directory structure
 WORKDIR /app
 COPY app.py /app/app.py 
@@ -174,4 +168,3 @@ RUN if [ -n "$GH_TOKEN" ]; then \
 # Run app as container entrypoint.
 EXPOSE $PORT
 ENTRYPOINT ["/app/entrypoint.sh"]
-
