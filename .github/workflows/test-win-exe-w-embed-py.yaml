@@ -187,6 +187,9 @@ jobs:
         run: |
           ./wix/candle.exe installer.wxs app_files.wxs python_runtime.wxs python_packages.wxs
 
+      - name: List .wixobj files
+        run: dir *.wixobj /s
+  
       - name: Link MSI
         run: |
           ./wix/light.exe -ext WixUIExtension -o ${APP_NAME}.msi installer.wixobj app_files.wixobj python_runtime.wixobj python_packages.wixobj
