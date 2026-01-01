@@ -188,7 +188,10 @@ jobs:
           ./wix/candle.exe installer.wxs app_files.wxs python_runtime.wxs python_packages.wxs
 
       - name: List .wixobj files
-        run: dir *.wixobj /s
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path . -Filter *.wixobj -Recurse
+
   
       - name: Link MSI
         run: |
