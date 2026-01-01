@@ -29,13 +29,6 @@ jobs:
           unzip python-${PYTHON_VERSION}-embed-amd64.zip -d python-${PYTHON_VERSION}
           rm python-${PYTHON_VERSION}-embed-amd64.zip
 
-      - name: Install pip into embeddable Python
-        shell: bash
-        run: |
-          curl -LO https://bootstrap.pypa.io/get-pip.py
-          ./python-${PYTHON_VERSION}/python get-pip.py --no-warn-script-location
-          rm get-pip.py
-
       - name: Enable site-packages (import site)
         shell: bash
         run: |
@@ -74,6 +67,17 @@ jobs:
       #    Get-ChildItem streamlit_exe -Recurse -Directory -Match "test","tests" | Remove-Item -Recurse -Force
 
       # ----------------------------------------------------------------------
+      # Prepare SourceDir first
+      # ----------------------------------------------------------------------
+      - name: Prepare SourceDir
+        run: |
+          Remove-Item -Recurse -Force SourceDir -ErrorAction SilentlyContinue
+          mkdir SourceDir
+          mv streamlit_exe/* SourceDir
+          cp assets/openms_license.rtf SourceDir
+          cp assets/openms.ico SourceDir
+
+      # ----------------------------------------------------------------------
       # Install WiX Toolset 3.11
       # ----------------------------------------------------------------------
       - name: Install WiX
@@ -84,22 +88,22 @@ jobs:
           rm wix311-binaries.zip
 
       # ----------------------------------------------------------------------
-      # Split harvesting
+      # Harvest application files in final SourceDir location
       # ----------------------------------------------------------------------
       - name: Harvest application files (no Python)
         shell: bash
         run: |
-          ./wix/heat.exe dir streamlit_exe -gg -sfrag -sreg -srd -template component -cg AppFiles -dr AppSubFolder -x streamlit_exe/python-${PYTHON_VERSION} -ke -out app_files.wxs
+          ./wix/heat.exe dir SourceDir -gg -sfrag -sreg -srd -template component -cg AppFiles -dr AppSubFolder -x SourceDir/python-${PYTHON_VERSION} -ke -out app_files.wxs
 
       - name: Harvest Python runtime (no site-packages)
         shell: bash
         run: |
-          ./wix/heat.exe dir streamlit_exe/python-${PYTHON_VERSION} -gg -sfrag -sreg -srd -template component -cg PythonRuntime -dr AppSubFolder -x streamlit_exe/python-${PYTHON_VERSION}/Lib/site-packages -ke -out python_runtime.wxs
+          ./wix/heat.exe dir SourceDir/python-${PYTHON_VERSION} -gg -sfrag -sreg -srd -template component -cg PythonRuntime -dr AppSubFolder -x SourceDir/python-${PYTHON_VERSION}/Lib/site-packages -ke -out python_runtime.wxs
 
       - name: Harvest Python site-packages
         shell: bash
         run: |
-          ./wix/heat.exe dir streamlit_exe/python-${PYTHON_VERSION}/Lib/site-packages -gg -sfrag -sreg -srd -template component -cg PythonPackages -dr AppSubFolder -ke -out python_packages.wxs
+          ./wix/heat.exe dir SourceDir/python-${PYTHON_VERSION}/Lib/site-packages -gg -sfrag -sreg -srd -template component -cg PythonPackages -dr AppSubFolder -ke -out python_packages.wxs
 
       # ----------------------------------------------------------------------
       # Assign DiskId per harvest to avoid CAB overflow
@@ -110,16 +114,6 @@ jobs:
           sed -i 's/<File /<File DiskId="1" /' app_files.wxs
           sed -i 's/<File /<File DiskId="2" /' python_runtime.wxs
           sed -i 's/<File /<File DiskId="3" /' python_packages.wxs
-
-      # ----------------------------------------------------------------------
-      # Prepare SourceDir
-      # ----------------------------------------------------------------------
-      - name: Prepare SourceDir
-        run: |
-          mkdir SourceDir
-          mv streamlit_exe/* SourceDir
-          cp assets/openms_license.rtf SourceDir
-          cp assets/openms.ico SourceDir
 
       # ----------------------------------------------------------------------
       # Main WiX product file
