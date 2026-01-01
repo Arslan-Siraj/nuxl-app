@@ -178,7 +178,7 @@ else:
             #st.write(calibration_data)
             idXML_file_100_XLs = result_dir / Path(idXML_file).name.replace(".idXML", "_perc_1.0000_XLs.idXML")
             
-            nuxl_rescore_exec = os.path.join(os.getcwd(),'python_310', 'python')
+            nuxl_rescore_exec = os.path.join(os.getcwd(),'python-3.10.0', 'python')
             # run the different combinations of features
             # RT_feat_
             if Retention_time_features and not Max_correlation_features:
