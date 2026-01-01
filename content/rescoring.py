@@ -3,11 +3,13 @@ import streamlit as st
 import threading
 import os
 
+
 from pathlib import Path
 from src.result_files import *
 from src.run_subprocess import *
 from src.view import plot_FDR_plot
 
+#from nuxl_rescore import run_pipeline
 params = page_setup()
 
 # If run in hosted mode, show captcha as long as it has not been solved
@@ -150,68 +152,76 @@ else:
 
         # Display a status message while running the analysis
         with st.status("Running analysis... Please wait until analysis done 😑"):
+ 
+            if Retention_time_features:
+                if protocol == 'RNA_DEB':
+                    model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_DEB")
+                    calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_DEB.csv")
+                    #st.write("Using RNA_DEB specific model and calibration data.")
 
-            # Define the command to run as a subprocess (example: grep or findstr (for windows))
-            # 'nt' indicates Windows
-            if os.name == 'nt':  
-                args = ["Python", "D:\\Nuxl_app_development\\nuxl_rescore_files\\NuXL_rescore\\run.py", "-id", id_file, "-calibration", calibration,
-                        "-unimod", unimod, "-feat_config", feat_config, "-model_path", model_path ]
-            else: 
-                if Retention_time_features:
-                    if protocol == 'RNA_DEB':
-                        model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_DEB")
-                        calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_DEB.csv")
-                        #st.write("Using RNA_DEB specific model and calibration data.")
+                elif protocol == 'RNA_NM':
+                    model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_NM")
+                    calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_NM.csv")
+                    #st.write("Using RNA_NM specific model and calibration data.")
 
-                    elif protocol == 'RNA_NM':
-                        model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_NM")
-                        calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_NM.csv")
-                        #st.write("Using RNA_NM specific model and calibration data.")
+                elif protocol == 'RNA_4SU':
+                    model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_4SU")
+                    calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_4SU.csv")
+                    #st.write("Using RNA_4SU specific model and calibration data.")
 
-                    elif protocol == 'RNA_4SU':
-                        model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "specific_model" / "full_hc_Train_RNA_4SU")
-                        calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_4SU.csv")
-                        #st.write("Using RNA_4SU specific model and calibration data.")
-
-                    elif protocol == 'RNA_UV' or protocol == "RNA_Other":
-                        model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "generic_model" / "full_hc_Train_RNA_All")
-                        calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_All.csv")
-                        #st.write("Using generic RNA_UV and Other model and calibration data.")
-                
-                #st.write(model_path)
-                #st.write(calibration_data)
-                idXML_file_100_XLs = result_dir / Path(idXML_file).name.replace(".idXML", "_perc_1.0000_XLs.idXML")
-
-                # run the different combinations of features
-                # RT_feat_
-                if Retention_time_features and not Max_correlation_features:
-                    st.write("Using ONLY retention time features.")
+                elif protocol == 'RNA_UV' or protocol == "RNA_Other":
+                    model_path = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "RT_deeplc_model" / "generic_model" / "full_hc_Train_RNA_All")
+                    calibration_data = str(nuxl_rescore_dir / "nuxl_rescore_resource" / "calibration_data" / "RNA_All.csv")
+                    #st.write("Using generic RNA_UV and Other model and calibration data.")
+            
+            #st.write(model_path)
+            #st.write(calibration_data)
+            idXML_file_100_XLs = result_dir / Path(idXML_file).name.replace(".idXML", "_perc_1.0000_XLs.idXML")
+            
+            nuxl_rescore_exec = os.path.join(os.getcwd(),'python_310', 'python')
+            # run the different combinations of features
+            # RT_feat_
+            if Retention_time_features and not Max_correlation_features:
+                st.write("Using ONLY retention time features.")
+                if os.name == 'nt':
                     # Assume 'posix' for Linux and macOS
-                    args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
+                    args =[nuxl_rescore_exec, "-m", "nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
                         "-unimod", unimod, "-feat_config", feat_config, "-rt_model", "DeepLC", "-model_path", model_path, "-out", str(result_dir)] 
-                    idXML_file_extra_100_XLs = result_dir / f"RT_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
-                
-                # Int_feat_
-                elif not Retention_time_features and Max_correlation_features:
-                    st.write("Using ONLY max correlation feature.")
-                    # Assume 'posix' for Linux and macOS
-                    args =["nuxl_rescore", "run", "-id", idXML_file,"-rt_model", "None", "-ms2pip", 
+                else:
+                     args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
+                        "-unimod", unimod, "-feat_config", feat_config, "-rt_model", "DeepLC", "-model_path", model_path, "-out", str(result_dir)] 
+
+                idXML_file_extra_100_XLs = result_dir / f"RT_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+            
+            # Int_feat_
+            elif not Retention_time_features and Max_correlation_features:
+                st.write("Using ONLY max correlation feature.")
+                # Assume 'posix' for Linux and macOS
+                if os.name == 'nt':
+                     args =[nuxl_rescore_exec, "-m", "nuxl_rescore", "run", "-id", idXML_file,"-rt_model", "None", "-ms2pip", 
                         "-unimod", unimod, "-feat_config", feat_config, "-out", str(result_dir)] 
-                    idXML_file_extra_100_XLs = result_dir / f"Int_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
-
-                # RT_Int_feat_
-                elif Retention_time_features and Max_correlation_features:
-                    st.write("Using retention time and max correlation feature.")
-                    # Assume 'posix' for Linux and macOS
-                    args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
-                        "-unimod", unimod, "-rt_model", "DeepLC", "-ms2pip", "-feat_config", feat_config, "-model_path", model_path, "-out", str(result_dir)]
-                    idXML_file_extra_100_XLs = result_dir / f"RT_Int_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
-
 
                 else:
-                    st.error("Please select at least one feature to use for rescoring.")
-                    idXML_file_extra_100_XLs = result_dir / f"updated_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
-                    st.stop()
+                    args =["nuxl_rescore", "run", "-id", idXML_file,"-rt_model", "None", "-ms2pip", 
+                        "-unimod", unimod, "-feat_config", feat_config, "-out", str(result_dir)] 
+                idXML_file_extra_100_XLs = result_dir / f"Int_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+
+            # RT_Int_feat_
+            elif Retention_time_features and Max_correlation_features:
+                st.write("Using retention time and max correlation feature.")
+                # Assume 'posix' for Linux and macOS
+                if os.name == 'nt':
+                    args =[nuxl_rescore_exec, "-m", "nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
+                        "-unimod", unimod, "-rt_model", "DeepLC", "-ms2pip", "-feat_config", feat_config, "-model_path", model_path, "-out", str(result_dir)]
+                else:  
+                    args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
+                        "-unimod", unimod, "-rt_model", "DeepLC", "-ms2pip", "-feat_config", feat_config, "-model_path", model_path, "-out", str(result_dir)]
+                idXML_file_extra_100_XLs = result_dir / f"RT_Int_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+
+            else:
+                st.error("Please select at least one feature to use for rescoring.")
+                idXML_file_extra_100_XLs = result_dir / f"updated_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+                st.stop()
 
             # Add any additional variables needed for the subprocess (if any)
             variables = []  
@@ -238,11 +248,19 @@ else:
 
                     else:
                         st.info("Converting mzML → MGF")
-                        args_convert = [
-                                        "FileConverter",
-                                        "-in", str(mzML_path),
-                                        "-out", str(mgf_path)
-                                    ]
+                        File_converter_exec = os.path.join(os.getcwd(),'openms-bin', 'FileConverter')
+                        if os.name == 'nt':
+                            args_convert = [
+                                            File_converter_exec,
+                                            "-in", str(mzML_path),
+                                            "-out", str(mgf_path)
+                                        ]
+                        else:
+                            args_convert = [
+                                            "FileConverter",
+                                            "-in", str(mzML_path),
+                                            "-out", str(mgf_path)
+                                        ]
 
                         st.info(f"Running: {' '.join(args_convert)}")
 
