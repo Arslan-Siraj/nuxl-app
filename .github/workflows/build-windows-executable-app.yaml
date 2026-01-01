@@ -173,6 +173,7 @@ jobs:
           #${{ github.workspace }}/OpenMS/bld/bin/*
           #${{ github.workspace }}/_thirdparty/*
           ${{ github.workspace }}/OpenMS/bld/bin/OpenNuXL.exe
+          ${{ github.workspace }}/OpenMS/bld/bin/FileConverter.exe
           ${{ github.workspace }}/OpenMS/bld/bin/PercolatorAdapter.exe
           ${{ github.workspace }}/OpenMS/bld/bin/*.dll
           ${{ github.workspace }}/_thirdparty/*.exe
