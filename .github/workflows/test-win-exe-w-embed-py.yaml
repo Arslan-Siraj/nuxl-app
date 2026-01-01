@@ -68,10 +68,10 @@ jobs:
           cp ${{ env.APP_NAME }}.bat streamlit_exe
 
       # Optional but strongly recommended: reduce file count
-      - name: Remove Python caches and tests
-        run: |
-          Get-ChildItem streamlit_exe -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
-          Get-ChildItem streamlit_exe -Recurse -Directory -Match "test","tests" | Remove-Item -Recurse -Force
+      #- name: Remove Python caches and tests
+      #  run: |
+      #   Get-ChildItem streamlit_exe -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+      #   Get-ChildItem streamlit_exe -Recurse -Directory -Match "test","tests" | Remove-Item -Recurse -Force
 
       # ----------------------------------------------------------------------
       # Install WiX Toolset 3.11
