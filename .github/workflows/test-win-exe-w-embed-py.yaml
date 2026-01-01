@@ -189,9 +189,7 @@ jobs:
 
       - name: Link MSI
         run: |
-          ./wix/light.exe -ext WixUIExtension `
-            -o ${APP_NAME}.msi `
-            installer.wixobj app_files.wixobj python_runtime.wixobj python_packages.wixobj
+          ./wix/light.exe -ext WixUIExtension -o ${APP_NAME}.msi installer.wixobj app_files.wixobj python_runtime.wixobj python_packages.wixobj
 
       # ----------------------------------------------------------------------
       # Upload artifact
