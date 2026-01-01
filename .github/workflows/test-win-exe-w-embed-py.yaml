@@ -67,11 +67,11 @@ jobs:
           cp settings.json streamlit_exe
           cp ${{ env.APP_NAME }}.bat streamlit_exe
 
-      # Optional but strongly recommended: reduce file count
+      # Optional: reduce file count (uncomment if needed)
       #- name: Remove Python caches and tests
       #  run: |
-      #   Get-ChildItem streamlit_exe -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
-      #   Get-ChildItem streamlit_exe -Recurse -Directory -Match "test","tests" | Remove-Item -Recurse -Force
+      #    Get-ChildItem streamlit_exe -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+      #    Get-ChildItem streamlit_exe -Recurse -Directory -Match "test","tests" | Remove-Item -Recurse -Force
 
       # ----------------------------------------------------------------------
       # Install WiX Toolset 3.11
@@ -84,41 +84,27 @@ jobs:
           rm wix311-binaries.zip
 
       # ----------------------------------------------------------------------
-      # Split harvesting (CRITICAL PART)
+      # Split harvesting
       # ----------------------------------------------------------------------
       - name: Harvest application files (no Python)
+        shell: bash
         run: |
-          ./wix/heat.exe dir streamlit_exe `
-            -gg -sfrag -sreg -srd `
-            -template component `
-            -cg AppFiles `
-            -dr AppSubFolder `
-            -x streamlit_exe/python-${{ env.PYTHON_VERSION }} `
-            -out app_files.wxs
+          ./wix/heat.exe dir streamlit_exe -gg -sfrag -sreg -srd -template component -cg AppFiles -dr AppSubFolder -x streamlit_exe/python-${PYTHON_VERSION} -ke -out app_files.wxs
 
       - name: Harvest Python runtime (no site-packages)
+        shell: bash
         run: |
-          ./wix/heat.exe dir streamlit_exe/python-${{ env.PYTHON_VERSION }} `
-            -gg -sfrag -sreg -srd `
-            -template component `
-            -cg PythonRuntime `
-            -dr AppSubFolder `
-            -x streamlit_exe/python-${{ env.PYTHON_VERSION }}/Lib/site-packages `
-            -out python_runtime.wxs
+          ./wix/heat.exe dir streamlit_exe/python-${PYTHON_VERSION} -gg -sfrag -sreg -srd -template component -cg PythonRuntime -dr AppSubFolder -x streamlit_exe/python-${PYTHON_VERSION}/Lib/site-packages -ke -out python_runtime.wxs
 
       - name: Harvest Python site-packages
+        shell: bash
         run: |
-          ./wix/heat.exe dir streamlit_exe/python-${{ env.PYTHON_VERSION }}/Lib/site-packages `
-            -gg -sfrag -sreg -srd `
-            -template component `
-            -cg PythonPackages `
-            -dr AppSubFolder `
-            -out python_packages.wxs
+          ./wix/heat.exe dir streamlit_exe/python-${PYTHON_VERSION}/Lib/site-packages -gg -sfrag -sreg -srd -template component -cg PythonPackages -dr AppSubFolder -ke -out python_packages.wxs
 
       # ----------------------------------------------------------------------
-      # Assign DiskId to avoid CAB overflow
+      # Assign DiskId per harvest to avoid CAB overflow
       # ----------------------------------------------------------------------
-      - name: Assign DiskId per harvest
+      - name: Assign DiskId
         shell: bash
         run: |
           sed -i 's/<File /<File DiskId="1" /' app_files.wxs
@@ -149,11 +135,9 @@ jobs:
                      Manufacturer="OpenMS Developer Team"
                      UpgradeCode="${APP_UpgradeCode}">
               <Package InstallerVersion="300" Compressed="yes" Platform="x64"/>
-
               <Media Id="1" Cabinet="app.cab" EmbedCab="yes"/>
               <Media Id="2" Cabinet="python.cab" EmbedCab="yes"/>
               <Media Id="3" Cabinet="packages.cab" EmbedCab="yes"/>
-
               <Directory Id="TARGETDIR" Name="SourceDir">
                 <Directory Id="ProgramFilesFolder">
                   <Directory Id="INSTALLFOLDER" Name="${APP_NAME}">
@@ -162,16 +146,13 @@ jobs:
                 </Directory>
                 <Directory Id="DesktopFolder"/>
               </Directory>
-
               <Feature Id="MainFeature" Level="1">
                 <ComponentGroupRef Id="AppFiles"/>
                 <ComponentGroupRef Id="PythonRuntime"/>
                 <ComponentGroupRef Id="PythonPackages"/>
               </Feature>
-
               <Icon Id="AppIcon" SourceFile="SourceDir/openms.ico"/>
               <WixVariable Id="WixUILicenseRtf" Value="SourceDir/openms_license.rtf"/>
-
               <UI>
                 <UIRef Id="WixUI_InstallDir"/>
                 <UIRef Id="WixUI_ErrorProgressText"/>
@@ -192,10 +173,10 @@ jobs:
         run: |
           Get-ChildItem -Path . -Filter *.wixobj -Recurse
 
-  
       - name: Link MSI
+        shell: pwsh
         run: |
-          ./wix/light.exe -ext WixUIExtension -o ${APP_NAME}.msi installer.wixobj app_files.wixobj python_runtime.wixobj python_packages.wixobj
+          & "./wix/light.exe" -ext WixUIExtension -o "${env:APP_NAME}.msi" "installer.wixobj" "app_files.wixobj" "python_runtime.wixobj" "python_packages.wixobj"
 
       # ----------------------------------------------------------------------
       # Upload artifact
