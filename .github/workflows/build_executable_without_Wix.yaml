@@ -258,6 +258,10 @@ jobs:
 
     - name: Create All-in-one executable folder
       run: |       
+        if (Test-Path -Path "streamlit_exe") {
+            Remove-Item -Recurse -Force "streamlit_exe"
+        }
+        
         mkdir streamlit_exe
         
         mv python-${{ env.PYTHON_VERSION }} streamlit_exe
