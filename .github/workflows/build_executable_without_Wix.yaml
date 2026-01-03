@@ -9,9 +9,10 @@ on:
   workflow_dispatch:
   
 env:
-  OPENMS_VERSION: 3.5.0 
+  OPENMS_VERSION: 3.5.0
+  PYTHON_VERSION: 3.10.0
   # Define needed TOPP tools here
-  TOPP_TOOLS: "OpenNuXL"
+  TOPP_TOOLS: "OpenNuXL FileConverter PercolatorAdapter"
 
 jobs:
   build-openms:
@@ -47,7 +48,6 @@ jobs:
         ## GH CLI "SHOULD BE" installed. Sometimes I had to manually install nonetheless. Super weird.
         # https://github.com/actions/runner-images/blob/main/images/win/scripts/Installers/Install-GitHub-CLI.ps1
         echo "C:/Program Files (x86)/GitHub CLI" >> $GITHUB_PATH
-        
     - name: Extract branch/PR infos
       shell: bash
       run: |
@@ -78,13 +78,11 @@ jobs:
         7z x -so contrib_build-Windows.tar.gz | 7z x -si -ttar
         rm contrib_build-Windows.tar.gz
         ls
-
     - name: Add contrib to PATH
       shell: bash
       run: |
         # Add contrib library path for runtime DLL resolution
         echo "${{ github.workspace }}/OpenMS/contrib/lib" >> $GITHUB_PATH
-
     - name: Setup ccache cache
       uses: actions/cache@v4
       with:
@@ -95,7 +93,6 @@ jobs:
           ${{ runner.os }}-ccache-${{ env.RUN_NAME }}
           ${{ runner.os }}-ccache-${{ env.BASE_REF }}
           ${{ runner.os }}-ccache-
-          
     - name: Add THIRDPARTY
       shell: bash
       run: |
@@ -113,7 +110,6 @@ jobs:
           do
             echo $thirdpartytool >> $GITHUB_PATH
           done
-          
     - name: Build Windows
       shell: bash
       run: |
@@ -168,15 +164,16 @@ jobs:
       with:
         name: openms-package
         path: |
+          ${{ github.workspace }}/OpenMS/bld/*.zip
           #${{ github.workspace }}/OpenMS/bld/bin/*
           #${{ github.workspace }}/_thirdparty/*
-          ${{ github.workspace }}/OpenMS/bld/bin/OpenNuXL.exe
-          ${{ github.workspace }}/OpenMS/bld/bin/FileConverter.exe
-          ${{ github.workspace }}/OpenMS/bld/bin/PercolatorAdapter.exe
-          ${{ github.workspace }}/OpenMS/bld/bin/*.dll
-          ${{ github.workspace }}/_thirdparty/*.exe
-          ${{ github.workspace }}/_thirdparty/ThermoRawFileParser/**
-          ${{ github.workspace }}/_thirdparty/Percolator/**
+          #${{ github.workspace }}/OpenMS/bld/bin/OpenNuXL.exe
+          #${{ github.workspace }}/OpenMS/bld/bin/FileConverter.exe
+          #${{ github.workspace }}/OpenMS/bld/bin/PercolatorAdapter.exe
+          #${{ github.workspace }}/OpenMS/bld/bin/*.dll
+          #${{ github.workspace }}/_thirdparty/*.exe
+          #${{ github.workspace }}/_thirdparty/ThermoRawFileParser/**
+          #${{ github.workspace }}/_thirdparty/Percolator/**
               
   build-executable:
     runs-on: windows-2022
@@ -195,41 +192,19 @@ jobs:
       with:
         name: openms-package
         path: openms-package
-
-    - name: List files in openms-package
-      run: |
-        ls -R openms-package
-
+        
     - name: Extract bin and share from package
       run: |
-        mkdir -p openms-bin
-        cp -r openms-package/OpenMS/bld/bin/* openms-bin/ || echo "No files to copy from openms-package/OpenMS/bld/bin"
-        mkdir -p openms-thirdparty
-        cp -r openms-package/_thirdparty/* openms-thirdparty/ || echo "No files to copy from openms-package/_thirdparty"
-        
-        #cp -r share ../share
-        #cp -r openms-package/bin ../openms-bin
-        #cp -r openms-package/share ../share
+        cd openms-package
+        unzip "*.zip" -d .
+        cp -r openms-package/bin ../openms-bin
+        cp -r openms-package/share ../share
 
-    - name: Download and unzip dlls
-      run: |
-        curl -L -o dlls_for_windows.zip https://github.com/Arslan-Siraj/nuxl_webapp_supporting_files/releases/download/v0.0.1/dlls_for_windows.zip
-        unzip dlls_for_windows.zip -d dlls_windows
-        cp -r dlls_windows/dlls_for_windows/* openms-bin/
-
-    - name: List files in openms-bin
-      run: |
-        ls -R openms-bin
-
-    - name: List files in openms-thirdparty
-      run: |
-        ls -R openms-thirdparty
-    
     - name: Set up Python (regular distribution)
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }} # Use the same version as the embeddable version
-    
+
     - name: Setup python embeddable version
       run: |
         # Create a directory for the embeddable Python version
@@ -251,7 +226,7 @@ jobs:
         cp $PYTHON_DIR/DLLs/_tkinter.pyd $EMBED_DIR/
         cp $PYTHON_DIR/DLLs/tcl86t.dll $EMBED_DIR/
         cp $PYTHON_DIR/DLLs/tk86t.dll $EMBED_DIR/
-
+    
     - name: Install pip
       run: |
         curl -O https://bootstrap.pypa.io/get-pip.py
@@ -268,8 +243,8 @@ jobs:
     - name: Install pyopenms
       run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install pyopenms==3.1.0 --no-warn-script-location
 
-    - name: Install numpy
-      run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install numpy==1.22.4 --no-warn-script-location
+    #- name: Install numpy
+    #  run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install numpy==1.22.4 --no-warn-script-location
 
     - name: Set to offline deployment
       run: |
@@ -282,28 +257,23 @@ jobs:
           echo " start /min .\python-${{ env.PYTHON_VERSION }}\python -m streamlit run app.py local" > ${{ env.APP_NAME }}.bat
 
     - name: Create All-in-one executable folder
-      run: |
-        if (Test-Path -Path "streamlit_exe") {
-            Remove-Item -Recurse -Force "streamlit_exe"
-        }
-        
+      run: |       
         mkdir streamlit_exe
+        
         mv python-${{ env.PYTHON_VERSION }} streamlit_exe
         cp -r src streamlit_exe
         cp -r content streamlit_exe
         cp -r assets streamlit_exe
         cp -r example-data streamlit_exe
-        cp -r Force .streamlit streamlit_exe
+        cp -r .streamlit streamlit_exe
         cp app.py streamlit_exe
         cp settings.json streamlit_exe
         cp ${{ env.APP_NAME }}.bat streamlit_exe
-        cp -r openms-bin streamlit_exe
-        cp -r openms-thirdparty streamlit_exe
 
-        #$files = $env:TOPP_TOOLS -split ' '
-        #foreach ($file in $files) {
-        #  Copy-Item "openms-bin/${file}.exe" -Destination "streamlit_exe/${file}.exe"
-        #}
+        $files = $env:TOPP_TOOLS -split ' '
+        foreach ($file in $files) {
+          Copy-Item "openms-bin/${file}.exe" -Destination "streamlit_exe/${file}.exe"
+        }
 
     - name: Generate Readme.txt
       shell: bash
