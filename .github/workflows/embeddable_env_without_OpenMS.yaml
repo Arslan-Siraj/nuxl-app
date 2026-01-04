@@ -84,35 +84,38 @@ jobs:
         $content.online_deployment = $false
         $content | ConvertTo-Json -Depth 100 | Set-Content settings.json
 
-    - name: Create .bat file
+    - name: Create launcher .bat file
+      shell: pwsh
       run: |
-          cat <<'EOF' > "${{ env.APP_NAME }}.bat"
-          @echo off
-          set PYTHON=.\python-${{ env.PYTHON_VERSION }}\python
-          set REQ=.\requirements_embd_py310_win.txt
-          set MARKER=.\python-${{ env.PYTHON_VERSION }}\.deps_installed
-          
-          REM If marker exists, skip installation
-          if exist "%MARKER%" goto RUN_APP
-          
-          echo Preparing Python environment...
-          
-          REM Ensure pip exists
-          "%PYTHON%" -m ensurepip >nul 2>&1
-          
-          REM Attempt installation
-          "%PYTHON%" -m pip install -r "%REQ%" --no-warn-script-location
-          if errorlevel 1 (
-              echo Dependency installation failed or was interrupted.
-              exit /b 1
-          )
-          
-          REM Create marker only after full success
-          echo OK>"%MARKER%"
-          
-          :RUN_APP
-          start /min "" "%PYTHON%" -m streamlit run app.py
-          EOF
+        $batContent = @"
+        @echo off
+        set PYTHON=.\python-${{ env.PYTHON_VERSION }}\python
+        set REQ=.\requirements_embd_py310_win.txt
+        set MARKER=.\python-${{ env.PYTHON_VERSION }}\.deps_installed
+        
+        REM If marker exists, skip installation
+        if exist "%MARKER%" goto RUN_APP
+        
+        echo Preparing Python environment...
+        
+        REM Ensure pip exists
+        "%PYTHON%" -m ensurepip >nul 2>&1
+        
+        REM Attempt installation
+        "%PYTHON%" -m pip install -r "%REQ%" --no-warn-script-location
+        if errorlevel 1 (
+            echo Dependency installation failed or was interrupted.
+            exit /b 1
+        )
+        
+        REM Create marker only after full success
+        echo OK>"%MARKER%"
+        
+        :RUN_APP
+        start /min "" "%PYTHON%" -m streamlit run app.py
+        "@
+        
+            $batContent | Set-Content -Encoding ASCII "${{ env.APP_NAME }}.bat"
 
     - name: Create All-in-one executable folder
       run: |       
