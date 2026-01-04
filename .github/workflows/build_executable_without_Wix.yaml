@@ -171,9 +171,9 @@ jobs:
           #${{ github.workspace }}/OpenMS/bld/bin/FileConverter.exe
           #${{ github.workspace }}/OpenMS/bld/bin/PercolatorAdapter.exe
           #${{ github.workspace }}/OpenMS/bld/bin/*.dll
-          #${{ github.workspace }}/_thirdparty/*.exe
-          #${{ github.workspace }}/_thirdparty/ThermoRawFileParser/**
-          #${{ github.workspace }}/_thirdparty/Percolator/**
+          ${{ github.workspace }}/_thirdparty/*.exe
+          ${{ github.workspace }}/_thirdparty/ThermoRawFileParser/**
+          ${{ github.workspace }}/_thirdparty/Percolator/**
               
   build-executable:
     runs-on: windows-2022
@@ -193,13 +193,19 @@ jobs:
         name: openms-package
         path: openms-package
         
-    - name: Extract bin and share from package
+    - name: Extract bin, share, and third-party from package
       run: |
         cd openms-package
         unzip "*.zip" -d .
+    
+        # Copy OpenMS binaries and share folder
         cp -r openms-package/bin ../openms-bin
         cp -r openms-package/share ../share
-
+    
+        # Copy third-party binaries and folders
+        mkdir -p ../_thirdparty
+        cp -r openms-package/_thirdparty/* ../_thirdparty
+        
     - name: Set up Python (regular distribution)
       uses: actions/setup-python@v5
       with:
@@ -289,6 +295,12 @@ jobs:
         foreach ($file in $files) {
           Copy-Item "openms-bin/${file}.exe" -Destination "streamlit_exe/${file}.exe"
         }
+
+        # Copy third-party binaries and folders
+        mkdir -p streamlit_exe/_thirdparty
+        cp _thirdparty/*.exe streamlit_exe/_thirdparty/
+        cp -r _thirdparty/ThermoRawFileParser streamlit_exe/_thirdparty/
+        cp -r _thirdparty/Percolator streamlit_exe/_thirdparty/
 
     - name: Generate Readme.txt
       shell: bash
