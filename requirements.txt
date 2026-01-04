@@ -12,7 +12,6 @@ streamlit-plotly-events==0.0.6
 streamlit-aggrid==0.3.4.post3
 nuxl-rescore==0.2.0
 psutil==7.2.1
-pyopenms==3.2.0
 #xlsxwriter
 ## for pyopenms nightly
 # --index-url https://pypi.cs.uni-tuebingen.de/simple/
