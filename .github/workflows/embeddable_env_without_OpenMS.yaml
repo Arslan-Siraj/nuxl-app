@@ -96,7 +96,7 @@ jobs:
         REM If marker exists, skip installation
         if exist "%MARKER%" goto RUN_APP
         
-        echo Preparing Python environment...
+        echo Preparing Python environment for launching App...
         
         REM Ensure pip exists
         "%PYTHON%" -m ensurepip >nul 2>&1
@@ -119,11 +119,11 @@ jobs:
 
     - name: Create All-in-one executable folder
       run: |       
-        if (Test-Path -Path "streamlit_exe") {
-            Remove-Item -Recurse -Force "streamlit_exe"
-        }
+        #if (Test-Path -Path "streamlit_exe") {
+        #    Remove-Item -Recurse -Force "streamlit_exe"
+        #}
         
-        mkdir streamlit_exe
+        #mkdir streamlit_exe
         
         mv python-${{ env.PYTHON_VERSION }} streamlit_exe
         cp -r src streamlit_exe
