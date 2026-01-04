@@ -127,6 +127,6 @@ jobs:
     - name: Archive build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: OpenMS_NuXLApp_without_Wix
+        name: OpenMS_NuXLApp_embedabble_python
         path: |
           streamlit_exe
