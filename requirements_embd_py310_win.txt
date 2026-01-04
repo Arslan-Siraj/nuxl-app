@@ -47,7 +47,7 @@ ndindex==1.10.1
 numba==0.63.1
 numexpr==2.10.0
 numpy==1.22.4
-nuxl_rescore==0.2.0
+nuxl_rescore==0.3.0
 oauthlib==3.3.1
 opt_einsum==3.4.0
 packaging==24.2
