@@ -238,13 +238,7 @@ jobs:
         sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python310._pth
 
     - name: Install Required Packages
-      run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements.txt --no-warn-script-location
-
-    - name: Install pyopenms
-      run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install pyopenms==3.1.0 --no-warn-script-location
-
-    #- name: Install numpy
-    #  run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install numpy==1.22.4 --no-warn-script-location
+      run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements_embd_py310_win.txt --no-warn-script-location
 
     - name: Set to offline deployment
       run: |
