@@ -75,8 +75,8 @@ jobs:
       run: |
         sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python310._pth
 
-    - name: Install Required Packages
-      run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements_embd_py310_win.txt --no-warn-script-location
+    #- name: Install Required Packages
+    #  run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements_embd_py310_win.txt --no-warn-script-location
           
     - name: Set to offline deployment
       run: |
@@ -105,6 +105,7 @@ jobs:
         cp app.py streamlit_exe
         cp settings.json streamlit_exe
         cp ${{ env.APP_NAME }}.bat streamlit_exe
+        cp requirements_embd_py310_win.txt streamlit_exe
 
     - name: Generate Readme.txt
       shell: bash
