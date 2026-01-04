@@ -49,6 +49,21 @@ jobs:
         cp $PYTHON_DIR/DLLs/_tkinter.pyd $EMBED_DIR/
         cp $PYTHON_DIR/DLLs/tcl86t.dll $EMBED_DIR/
         cp $PYTHON_DIR/DLLs/tk86t.dll $EMBED_DIR/
+
+    - name: Bundle MSVC runtime DLLs
+      shell: powershell
+      run: |
+        $embed = "python-${{ env.PYTHON_VERSION }}"
+        $dlls = @(
+          "vcomp140.dll",
+          "vcruntime140.dll",
+          "vcruntime140_1.dll",
+          "msvcp140.dll"
+        )
+
+        foreach ($dll in $dlls) {
+          Copy-Item "C:\Windows\System32\$dll" "$embed\$dll" -Force
+        }
     
     - name: Install pip
       run: |
