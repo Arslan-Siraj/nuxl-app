@@ -4,24 +4,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  inspect-artifact:
-    runs-on: windows-2022
-
-    permissions:
-      actions: read
-      contents: read
+  use-release:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Download OpenMS artifact
-        uses: actions/download-artifact@v4
-        with:
-          repository: Arslan-Siraj/nuxl-app
-          run-id: 20693570380
-          name: openms-package
-          path: openms-package
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Show artifact contents (tree)
-        shell: pwsh
+      - name: Download ZIP from GitHub Release
         run: |
-          Write-Host "===== openms-package tree ====="
-          Get-ChildItem openms-package -Recurse -Force
+          curl -L \
+            -o openms-package.zip \
+            https://github.com/OWNER/REPO/releases/download/v1.0.0/openms-package.
+            
+      - name: List downloaded artifact contents
+        run: |
+          echo "Contents of openms-package:"
+          ls -R openms-package
+
+      
