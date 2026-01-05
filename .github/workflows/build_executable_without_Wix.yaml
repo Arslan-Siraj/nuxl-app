@@ -192,19 +192,25 @@ jobs:
       with:
         name: openms-package
         path: openms-package
-        
-    - name: Extract bin, share, and third-party from package
+
+    - name: List downloaded artifact contents
       run: |
-        cd openms-package
+        echo "Contents of openms-package:"
+        ls -R openms-package
+    
+    - name: Extract bin, share
+      run: |
+        cd openms-package/OpenMS/bld
         unzip "*.zip" -d .
     
         # Copy OpenMS binaries and share folder
         cp -r openms-package/bin ../openms-bin
         cp -r openms-package/share ../share
-    
-        # Copy third-party binaries and folders
-        mkdir -p ../_thirdparty
-        cp -r openms-package/_thirdparty/* ../_thirdparty
+
+    - name: Extract thirdparty
+      run: |
+          mkdir -p ../_thirdparty
+          cp -r openms-package/_thirdparty/* ../_thirdparty
         
     - name: Set up Python (regular distribution)
       uses: actions/setup-python@v5
