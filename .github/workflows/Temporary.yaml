@@ -15,11 +15,10 @@ jobs:
         run: |
           curl -L \
             -o openms-package.zip \
-            https://github.com/OWNER/REPO/releases/download/v1.0.0/openms-package.
+            https://github.com/Arslan-Siraj/nuxl_webapp_supporting_files/releases/tag/OpenMS_3_5_windows/openms-package.zip
             
-      - name: List downloaded artifact contents
+      - name: Unzip OpenMS package
         run: |
-          echo "Contents of openms-package:"
+          unzip openms-package.zip -d openms-package
           ls -R openms-package
-
       
