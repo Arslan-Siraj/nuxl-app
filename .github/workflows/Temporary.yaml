@@ -3,13 +3,16 @@ name: Inspect OpenMS Release Package
 on:
   workflow_dispatch:
 
+env:
+  TOPP_TOOLS: "OpenNuXL FileConverter PercolatorAdapter"
+      
 jobs:
   use-release:
     runs-on: ubuntu-latest
 
     permissions:
       contents: read   # required to read release assets
-
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -46,4 +49,29 @@ jobs:
           cp -r openms-inner/openms-package/bin/* openms-bin/
           cp -r openms-inner/openms-package/share/* openms-share/
 
+      - name: Prepare Streamlit executable layout
+        run: |
+          # Create target folder
+          mkdir -p streamlit_exe streamlit_exe/share
+      
+          # Copy all DLLs from openms-bin
+          cp -r openms-bin/*.dll streamlit_exe/
+      
+          # Copy share folder
+          cp -r openms-share/* streamlit_exe/share/
+
+          # Copy only selected .exe files from openms-bin
+          for tool in $TOPP_TOOLS; do
+            if [ -f "openms-bin/$tool.exe" ]; then
+              cp "openms-bin/$tool.exe" streamlit_exe/
+            else
+              echo "Warning: $tool.exe not found in openms-bin"
+            fi
+          done
+
+      - name: Upload streamlit_exe as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamlit_exe
+          path: streamlit_exe
         
