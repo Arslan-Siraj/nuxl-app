@@ -61,7 +61,7 @@ jobs:
           cp -r openms-share/* streamlit_exe/share/
 
           # copy chemistry outside
-          cp -r openms-share/CHEMISTRY streamlit_exe/
+          cp -r openms-share/OpenMS/CHEMISTRY streamlit_exe/
           
           # Copy only selected .exe files from openms-bin
           for tool in $TOPP_TOOLS; do
