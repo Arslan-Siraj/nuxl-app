@@ -212,6 +212,22 @@ jobs:
         # copy thirdparty folder
         cp -r openms-package/openms-package/_thirdparty streamlit_exe/
 
+    - name: Create Streamlit config
+      shell: bash
+      run: |
+        mkdir -p streamlit_exe/.streamlit
+    
+        cat <<'EOF' > streamlit_exe/.streamlit/config.toml
+        [server]
+        headless = true
+        port = 8501
+        enableCORS = false
+        enableXsrfProtection = false
+    
+        [browser]
+        gatherUsageStats = false
+        EOF
+    
     - name: Generate Readme.txt
       shell: bash
       run: |
