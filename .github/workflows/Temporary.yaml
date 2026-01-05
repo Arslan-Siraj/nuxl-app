@@ -43,7 +43,7 @@ jobs:
         run: |
           mkdir -p openms-bin openms-share
 
-          cp -r openms-inner/bin/* openms-bin/
-          cp -r openms-inner/share/* openms-share/
+          cp -r openms-inner/openms-package/bin/* openms-bin/
+          cp -r openms-inner/openms-package/share/* openms-share/
 
         
