@@ -198,15 +198,18 @@ jobs:
         echo "Contents of openms-package:"
         ls -R openms-package
     
-    - name: Extract bin, share
+    - name: Extract bin and share (fixed paths)
+      shell: bash
       run: |
         cd openms-package/OpenMS/bld
-        mkdir extracted
+        mkdir -p extracted
         unzip "*.zip" -d extracted
     
-        # Copy OpenMS binaries and share folder to parent paths
-        cp -r extracted/bin ../../openms-bin
-        cp -r extracted/share ../../share
+        mkdir -p ../../openms-bin
+        mkdir -p ../../share
+    
+        cp -r extracted/openms-package/bin/* ../../openms-bin/
+        cp -r extracted/openms-package/share/* ../../share/
         
     - name: List openms-bin contents
       run: |
