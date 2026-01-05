@@ -39,8 +39,6 @@ jobs:
             openms-package/openms-package/OpenMS/bld/openms-package.zip \
             -d openms-inner
 
-          ls -R openms-inner | head 10
-
       - name: Promote OpenMS bin and share to root
         run: |
           mkdir -p openms-bin openms-share
