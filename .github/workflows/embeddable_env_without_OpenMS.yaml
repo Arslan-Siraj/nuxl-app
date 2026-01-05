@@ -227,6 +227,12 @@ jobs:
         [browser]
         gatherUsageStats = false
         EOF
+        
+    - name: Verify .streamlit folder contents
+      shell: bash
+      run: |
+        echo "Listing contents of streamlit_exe/.streamlit"
+        ls -R streamlit_exe/.streamlit
     
     - name: Generate Readme.txt
       shell: bash
