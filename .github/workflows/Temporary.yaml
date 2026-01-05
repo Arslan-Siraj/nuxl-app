@@ -32,3 +32,20 @@ jobs:
         run: |
           unzip *.zip -d openms-package
           ls -R openms-package
+
+      - name: Extract inner OpenMS package
+        run: |
+          unzip \
+            openms-package/openms-package/OpenMS/bld/openms-package.zip \
+            -d openms-inner
+
+          ls -R openms-inner | head 10
+
+      - name: Promote OpenMS bin and share to root
+        run: |
+          mkdir -p openms-bin openms-share
+
+          cp -r openms-inner/bin/* openms-bin/
+          cp -r openms-inner/share/* openms-share/
+
+        
