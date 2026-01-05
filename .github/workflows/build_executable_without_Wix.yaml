@@ -249,23 +249,17 @@ jobs:
       run: |
         sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python310._pth
 
-    - name: Install Required Packages
-      run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements_embd_py310_win.txt --no-warn-script-location
+    #- name: Install Required Packages
+    #  run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements_embd_py310_win.txt --no-warn-script-location
 
-    - name: Binary-stable OpenMS stack
-      run: | 
-          # Seed DLLs
-          python -m pip install pyopenms==3.3.0
-      
-          # Override Python bindings
-          python -m pip install pyopenms==3.1.0
-      
-          # Restore correct NumPy ABI
-          python -m pip install numpy==1.22.4
+    #- name: Binary-stable OpenMS stack
+    #  run: | 
+    #      # Seed DLLs
+    #      python -m pip install pyopenms==3.3.0
           
-    - name: Copy NuXL data to pyOpenMS
-      run: |
-        cp -r share/OpenMS/NuXL python-${{ env.PYTHON_VERSION }}/Lib/site-packages/pyopenms/share/OpenMS
+    #- name: Copy NuXL data to pyOpenMS
+    #  run: |
+    #    cp -r share/OpenMS/NuXL python-${{ env.PYTHON_VERSION }}/Lib/site-packages/pyopenms/share/OpenMS
 
     - name: Set to offline deployment
       run: |
@@ -273,9 +267,38 @@ jobs:
         $content.online_deployment = $false
         $content | ConvertTo-Json -Depth 100 | Set-Content settings.json
 
-    - name: Create .bat file
+    - name: Create launcher .bat file
+      shell: pwsh
       run: |
-          echo " start /min .\python-${{ env.PYTHON_VERSION }}\python -m streamlit run app.py local" > ${{ env.APP_NAME }}.bat
+        $batContent = @"
+        @echo off
+        set PYTHON=.\python-${{ env.PYTHON_VERSION }}\python
+        set REQ=.\requirements_embd_py310_win.txt
+        set MARKER=.\python-${{ env.PYTHON_VERSION }}\.deps_installed
+        
+        REM If marker exists, skip installation
+        if exist "%MARKER%" goto RUN_APP
+        
+        echo Preparing Python environment for launching App...
+        
+        REM Ensure pip exists
+        "%PYTHON%" -m ensurepip >nul 2>&1
+        
+        REM Attempt installation
+        "%PYTHON%" -m pip install -r "%REQ%" --no-warn-script-location
+        if errorlevel 1 (
+            echo Dependency installation failed or was interrupted.
+            exit /b 1
+        )
+        
+        REM Create marker only after full success
+        echo OK>"%MARKER%"
+        
+        :RUN_APP
+        start /min "" "%PYTHON%" -m streamlit run app.py
+        "@
+        
+            $batContent | Set-Content -Encoding ASCII "${{ env.APP_NAME }}.bat"
 
     - name: Create All-in-one executable folder
       run: |       
