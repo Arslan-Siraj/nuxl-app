@@ -26,25 +26,34 @@ jobs:
     - name: Download OpenMS release asset
       env:
         GH_TOKEN: ${{ github.token }}
+      shell: bash
       run: |
-        gh release download OpenMS_3_5_windows \
-          --repo Arslan-Siraj/nuxl_webapp_supporting_files \
+        gh release download OpenMS_3_5_windows `
+          --repo Arslan-Siraj/nuxl_webapp_supporting_files `
           --pattern "*.zip"
+          
     - name: Verify downloaded file
+      shell: bash
       run: |
         ls -lh
         file *.zip
         unzip -t *.zip
+        
     - name: Extract OpenMS package
+      shell: bash
       run: |
         unzip *.zip -d openms-package
         ls -R openms-package
+        
     - name: Extract inner OpenMS package
+      shell: bash
       run: |
         unzip \
           openms-package/openms-package/OpenMS/bld/openms-package.zip \
           -d openms-inner
+          
     - name: Promote OpenMS bin and share to root
+      shell: bash
       run: |
         mkdir -p openms-bin openms-share
         cp -r openms-inner/openms-package/bin/* openms-bin/
