@@ -170,11 +170,11 @@ jobs:
     - name: Create All-in-one executable folder
       shell: bash
       run: |       
-        if (Test-Path -Path "streamlit_exe") {
-            Remove-Item -Recurse -Force "streamlit_exe"
-        }
+        if [ -d "streamlit_exe" ]; then
+          rm -rf streamlit_exe
+        fi
         
-        mkdir streamlit_exe
+        mkdir -p streamlit_exe
         mv python-${{ env.PYTHON_VERSION }} streamlit_exe
         cp -r src streamlit_exe
         cp -r content streamlit_exe
@@ -220,7 +220,7 @@ jobs:
         cat <<'EOF' > streamlit_exe/.streamlit/config.toml
         [server]
         headless = true
-        port = 8501
+        port = 8505
         enableCORS = false
         enableXsrfProtection = false
     
