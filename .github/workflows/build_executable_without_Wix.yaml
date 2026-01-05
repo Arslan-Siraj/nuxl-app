@@ -201,11 +201,17 @@ jobs:
     - name: Extract bin, share
       run: |
         cd openms-package/OpenMS/bld
-        unzip "*.zip" -d .
+        mkdir extracted
+        unzip "*.zip" -d extracted
     
-        # Copy OpenMS binaries and share folder
-        cp -r openms-package/bin ../openms-bin
-        cp -r openms-package/share ../share
+        # Copy OpenMS binaries and share folder to parent paths
+        cp -r extracted/bin ../../openms-bin
+        cp -r extracted/share ../../share
+        
+    - name: List openms-bin contents
+      run: |
+        echo "Contents of openms-bin:"
+        ls -R openms-bin
 
     - name: Extract thirdparty
       run: |
@@ -327,9 +333,7 @@ jobs:
 
         # Copy third-party binaries and folders
         mkdir -p streamlit_exe/_thirdparty
-        cp _thirdparty/*.exe streamlit_exe/_thirdparty/
-        cp -r _thirdparty/ThermoRawFileParser streamlit_exe/_thirdparty/
-        cp -r _thirdparty/Percolator streamlit_exe/_thirdparty/
+        cp -r _thirdparty/* streamlit_exe/_thirdparty/
 
     - name: Generate Readme.txt
       shell: bash
