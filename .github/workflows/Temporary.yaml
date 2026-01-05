@@ -8,11 +8,11 @@ jobs:
     runs-on: windows-2022
 
     permissions:
-      actions: read   # required to read artifacts
+      actions: read
       contents: read
 
     steps:
-      - name: Download openms-package artifact
+      - name: Download OpenMS artifact
         uses: actions/download-artifact@v4
         with:
           repository: Arslan-Siraj/nuxl-app
@@ -21,9 +21,7 @@ jobs:
           path: openms-package
 
       - name: Show artifact contents (tree)
-        shell: cmd
+        shell: pwsh
         run: |
-          echo ===============================
-          echo Contents of openms-package
-          echo ===============================
-          dir /s openms-package
+          Write-Host "===== openms-package tree ====="
+          Get-ChildItem openms-package -Recurse -Force
