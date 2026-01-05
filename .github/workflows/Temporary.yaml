@@ -70,7 +70,7 @@ jobs:
           done
 
           # copy thirdparty folder
-          cp -r openms-package/_thirdparty streamlit_exe/
+          cp -r openms-package/openms-package/_thirdparty streamlit_exe/
 
       - name: Upload streamlit_exe as artifact
         uses: actions/upload-artifact@v4
