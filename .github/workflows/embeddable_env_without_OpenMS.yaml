@@ -156,6 +156,16 @@ jobs:
         "@
         
             $batContent | Set-Content -Encoding ASCII "${{ env.APP_NAME }}.bat"
+            
+    - name: Verify .streamlit folder exists
+      shell: bash
+      run: |
+        echo "PWD:"
+        pwd
+        echo "Listing repo root:"
+        ls -la
+        echo "Listing .streamlit:"
+        ls -la .streamlit
 
     - name: Create All-in-one executable folder
       shell: bash
@@ -169,13 +179,12 @@ jobs:
         cp -r src streamlit_exe
         cp -r content streamlit_exe
         cp -r assets streamlit_exe
-        cp -r example-data streamlit_exe
+        #cp -r example-data streamlit_exe
         cp -r .streamlit streamlit_exe
         cp app.py streamlit_exe
         cp settings.json streamlit_exe
         cp ${{ env.APP_NAME }}.bat streamlit_exe
         cp requirements_embd_py310_win.txt streamlit_exe
-
           
          mkdir -p streamlit_exe streamlit_exe/share
       
