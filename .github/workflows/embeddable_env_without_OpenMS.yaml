@@ -155,6 +155,7 @@ jobs:
             $batContent | Set-Content -Encoding ASCII "${{ env.APP_NAME }}.bat"
 
     - name: Create All-in-one executable folder
+      shell: bash
       run: |       
         #if (Test-Path -Path "streamlit_exe") {
         #    Remove-Item -Recurse -Force "streamlit_exe"
@@ -171,7 +172,7 @@ jobs:
         cp ${{ env.APP_NAME }}.bat streamlit_exe
         cp requirements_embd_py310_win.txt streamlit_exe
 
-
+          
          mkdir -p streamlit_exe streamlit_exe/share
       
         # Copy all DLLs from openms-bin
