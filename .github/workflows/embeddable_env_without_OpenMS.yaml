@@ -28,8 +28,8 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       shell: bash
       run: |
-        gh release download OpenMS_3_5_windows `
-          --repo Arslan-Siraj/nuxl_webapp_supporting_files `
+        gh release download OpenMS_3_5_windows \
+          --repo Arslan-Siraj/nuxl_webapp_supporting_files \
           --pattern "*.zip"
           
     - name: Verify downloaded file
