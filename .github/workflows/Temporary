@@ -1,0 +1,29 @@
+name: Inspect OpenMS Artifact
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect-artifact:
+    runs-on: windows-2022
+
+    permissions:
+      actions: read   # required to read artifacts
+      contents: read
+
+    steps:
+      - name: Download openms-package artifact
+        uses: actions/download-artifact@v4
+        with:
+          repository: Arslan-Siraj/nuxl-app
+          run-id: 20693570380
+          name: openms-package
+          path: openms-package
+
+      - name: Show artifact contents (tree)
+        shell: cmd
+        run: |
+          echo ===============================
+          echo Contents of openms-package
+          echo ===============================
+          dir /s openms-package
