@@ -183,7 +183,7 @@ jobs:
         cp -r openms-bin/*.dll streamlit_exe/
     
         # Copy share folder
-        cp -r openms-share/* streamlit_exe/share/
+        #cp -r openms-share/* streamlit_exe/share/
   
         # copy chemistry outside
         cp -r openms-share/OpenMS/CHEMISTRY streamlit_exe/
