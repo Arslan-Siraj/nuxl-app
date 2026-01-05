@@ -3,7 +3,6 @@ import streamlit as st
 import threading
 import os
 
-
 from pathlib import Path
 from src.result_files import *
 from src.run_subprocess import *
@@ -248,7 +247,7 @@ else:
 
                     else:
                         st.info("Converting mzML → MGF")
-                        File_converter_exec = os.path.join(os.getcwd(),'openms-bin', 'FileConverter')
+                        File_converter_exec = os.path.join(os.getcwd(),'FileConverter')
                         if os.name == 'nt':
                             args_convert = [
                                             File_converter_exec,

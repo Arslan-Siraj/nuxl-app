@@ -2,6 +2,7 @@ import streamlit as st
 import subprocess
 
 SUPPRESSED_PATTERNS = [
+    "qt.network.ssl"
     "UserWarning:",
     "WARNING:tensorflow:",
     "Warnings.warn(",
@@ -17,6 +18,10 @@ SUPPRESSED_PATTERNS = [
     "To enable the following instructions",
     "FutureWarning",
     "x = re.sub(pattern, '', string_)"
+]
+
+SUPPRESSED_PATTERNS_out = [
+    "Warning: OPENMS_DATA_PATH environment variable already exists"
 ]
 
 def run_subprocess(args: list[str], variables: list[str], result_dict: dict) -> None:
@@ -46,9 +51,20 @@ def run_subprocess(args: list[str], variables: list[str], result_dict: dict) -> 
             break
         if output:
             # Print every line of standard output on the Streamlit page
-            st.text(output.strip())
+            #st.text(output.strip())
             # Append the line to store in the log
-            stdout_.append(output.strip())
+            #stdout_.append(output.strip())
+
+            line = output.strip()
+
+            # suppress known non-fatal warnings
+            if any(p in line for p in SUPPRESSED_PATTERNS_out):
+                #stderr_.append(line)   # keep in log if you want
+                continue
+
+            # real errors only
+            st.text(line)
+            stdout_.append(line)
 
     # Capture the standard error of the subprocess
     while True:

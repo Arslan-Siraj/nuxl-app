@@ -299,9 +299,9 @@ if submit_button:
             # If session state is local
             if st.session_state.location == "local":
               
-                OpenNuXL_exec = os.path.join(os.getcwd(),'openms-bin', 'OpenNuXL')
-                perc_exec = os.path.join(os.getcwd(), 'openms-thirdparty', 'Percolator', 'percolator.exe') 
-                thermo_exec_path = os.path.join(os.getcwd(), 'openms-thirdparty', 'ThermoRawFileParser', 'ThermoRawFileParser.exe')
+                OpenNuXL_exec = os.path.join(os.getcwd(),'OpenNuXL')
+                perc_exec = os.path.join(os.getcwd(), '_thirdparty', 'Percolator', 'percolator.exe') 
+                thermo_exec_path = os.path.join(os.getcwd(), '_thirdparty', 'ThermoRawFileParser', 'ThermoRawFileParser.exe')
 
                 args = [OpenNuXL_exec, "-ThermoRaw_executable", thermo_exec_path, "-in", mzML_file_path, "-database", database_file_path, "-out", result_path, "-NuXL:presets", preset, 
                                 "-NuXL:length", length, "-NuXL:scoring", scoring, "-precursor:mass_tolerance",  Precursor_MT, "-precursor:mass_tolerance_unit",  Precursor_MT_unit,
