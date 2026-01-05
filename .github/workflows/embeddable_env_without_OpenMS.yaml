@@ -10,6 +10,7 @@ on:
   
 env:
   PYTHON_VERSION: 3.10.0
+  TOPP_TOOLS: "OpenNuXL FileConverter PercolatorAdapter"
   
 jobs: 
   build-executable:
@@ -160,7 +161,6 @@ jobs:
         #}
         
         #mkdir streamlit_exe
-        
         mv python-${{ env.PYTHON_VERSION }} streamlit_exe
         cp -r src streamlit_exe
         cp -r content streamlit_exe
@@ -170,6 +170,30 @@ jobs:
         cp settings.json streamlit_exe
         cp ${{ env.APP_NAME }}.bat streamlit_exe
         cp requirements_embd_py310_win.txt streamlit_exe
+
+
+         mkdir -p streamlit_exe streamlit_exe/share
+      
+        # Copy all DLLs from openms-bin
+        cp -r openms-bin/*.dll streamlit_exe/
+    
+        # Copy share folder
+        cp -r openms-share/* streamlit_exe/share/
+  
+        # copy chemistry outside
+        cp -r openms-share/OpenMS/CHEMISTRY streamlit_exe/
+        
+        # Copy only selected .exe files from openms-bin
+        for tool in $TOPP_TOOLS; do
+          if [ -f "openms-bin/$tool.exe" ]; then
+            cp "openms-bin/$tool.exe" streamlit_exe/
+          else
+            echo "Warning: $tool.exe not found in openms-bin"
+          fi
+        done
+  
+        # copy thirdparty folder
+        cp -r openms-package/openms-package/_thirdparty streamlit_exe/
 
     - name: Generate Readme.txt
       shell: bash
