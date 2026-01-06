@@ -7,6 +7,8 @@
 # debug container after build (comment out ENTRYPOINT) and run container with interactive /bin/bash shell
 # prune unused images/etc. to free disc space (e.g. might be needed on gitpod). Use with care.: docker system prune --all --force
 
+# This Dockerfile builds OpenMS on NuXL branch, the TOPP tools, pyOpenMS and thidparty tools.
+
 FROM ubuntu:22.04 AS setup-build-system
 ARG OPENMS_REPO=https://github.com/OpenMS/OpenMS.git
 ARG OPENMS_BRANCH=release/3.5.0
@@ -17,7 +19,7 @@ ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
 ARG GITHUB_USER=OpenMS
 # Streamlit app Gihub repository name (to download artifact from).
-ARG GITHUB_REPO=streamlit-template
+ARG GITHUB_REPO=nuxl-app
 
 USER root
 
@@ -50,11 +52,17 @@ RUN wget -q \
     && rm -f Miniforge3-Linux-x86_64.sh
 RUN mamba --version
 
-# Setup mamba environment.
-RUN mamba create -n streamlit-env python=3.10
+COPY environment.yml ./environment.yml
+RUN mamba env create -f environment.yml
 RUN echo "mamba activate streamlit-env" >> ~/.bashrc
 SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
 SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
+
+# Setup mamba environment.
+#RUN mamba create -n streamlit-env python=3.10
+#RUN echo "mamba activate streamlit-env" >> ~/.bashrc
+#SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
+#SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
 
 # Install up-to-date cmake via mamba and packages for pyOpenMS build.
 RUN mamba install cmake
@@ -93,14 +101,11 @@ RUN rm -rf src doc CMakeFiles
 #RUN pip install dist/*.whl
 
 # Install other dependencies (excluding pyopenms)
-COPY requirements.txt ./requirements.txt 
-RUN grep -Ev '^pyopenms([=<>!~].*)?$' requirements.txt > requirements_cleaned.txt && mv requirements_cleaned.txt requirements.txt
-RUN pip install -r requirements.txt
+#COPY requirements.txt ./requirements.txt 
+#RUN grep -Ev '^pyopenms([=<>!~].*)?$' requirements.txt > requirements_cleaned.txt && mv requirements_cleaned.txt requirements.txt
+#RUN pip install -r requirements.txt
 
-# Copy the package into the image
-COPY ./nuxl_rescore/nuxl_rescore-0.3.0.tar.gz /tmp/nuxl_rescore-0.3.0.tar.gz
-# Install it
-RUN pip install /tmp/nuxl_rescore-0.3.0.tar.gz
+RUN pip install nuxl-rescore==0.2.0
 
 WORKDIR /
 RUN mkdir openms
@@ -110,8 +115,8 @@ RUN cp -r openms-build/bin /openms/bin
 ENV PATH="/openms/bin/:${PATH}"
 
 # Copy TOPP tools bin directory, add to PATH.
-RUN cp -r openms-build/lib /openms/lib
-ENV LD_LIBRARY_PATH="/openms/lib/:${LD_LIBRARY_PATH}"
+#RUN cp -r openms-build/lib /openms/lib
+#ENV LD_LIBRARY_PATH="/openms/lib/:${LD_LIBRARY_PATH}"
 
 # Copy share folder, add to PATH, remove source directory.
 RUN cp -r OpenMS/share/OpenMS /openms/share
@@ -125,7 +130,6 @@ RUN rm -rf openms-build
 FROM compile-openms AS run-app
 # Create workdir and copy over all streamlit related files/folders.
 
-# note: specifying folder with slash as suffix and repeating the folder name seems important to preserve directory structure
 # note: specifying folder with slash as suffix and repeating the folder name seems important to preserve directory structure
 WORKDIR /app
 COPY app.py /app/app.py 
@@ -159,11 +163,10 @@ RUN jq '.online_deployment = true' settings.json > tmp.json && mv tmp.json setti
 # Download latest OpenMS App executable as a ZIP file
 RUN if [ -n "$GH_TOKEN" ]; then \
         echo "GH_TOKEN is set, proceeding to download the release asset..."; \
-        gh release download -R ${GITHUB_USER}/${GITHUB_REPO} -p "OpenMS-App.zip" -D /app; \
+        gh release download -R ${GITHUB_USER}/${GITHUB_REPO} -p "OpenMS-NuXLApp.zip" -D /app; \
     else \
         echo "GH_TOKEN is not set, skipping the release asset download."; \
     fi
-
 
 # Run app as container entrypoint.
 EXPOSE $PORT

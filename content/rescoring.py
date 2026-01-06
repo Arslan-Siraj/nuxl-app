@@ -305,17 +305,25 @@ else:
                    f.unlink()
 
             if plot_PseudROC:
-               #ploting_pseudoROC()
-                st.info("Generating Pseudo-ROC plot ...")
-                fig = plot_FDR_plot(
-                    idXML_id=str(idXML_file_100_XLs),
-                    idXML_extra=str(idXML_file_extra_100_XLs),
-                    FDR_level=20,
-                    exp_name=str(Path(idXML_file).stem)
-                )
+                if not Path(idXML_file_100_XLs).exists():
+                    st.warning(
+                        "The reference identification file without rescoring could not be found. "
+                        "Please run the NuXL search engine to enable a direct comparison "
+                        "and generate the Pseudo-ROC plot."
+                    )
 
-                #show figure
-                show_fig(fig,  f"{Path(idXML_file).stem}_PseudoROC_plot_rescoring")
+                else:
+                    #ploting_pseudoROC()
+                    st.info("Generating Pseudo-ROC plot ...")
+                    fig = plot_FDR_plot(
+                        idXML_id=str(idXML_file_100_XLs),
+                        idXML_extra=str(idXML_file_extra_100_XLs),
+                        FDR_level=20,
+                        exp_name=str(Path(idXML_file).stem)
+                    )
+
+                    #show figure
+                    show_fig(fig,  f"{Path(idXML_file).stem}_PseudoROC_plot_rescoring")
 
             st.success("⚡️ **Rescoring Completed Successfully!** ⚡️")
 
