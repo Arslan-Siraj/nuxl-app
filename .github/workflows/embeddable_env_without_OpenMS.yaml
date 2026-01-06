@@ -211,9 +211,9 @@ jobs:
     - name: Create Streamlit config
       shell: bash
       run: |
-        mkdir -p streamlit_exe/.streamlit
+        mkdir -p streamlit_exe/streamlit
     
-        cat <<'EOF' > streamlit_exe/.streamlit/config.toml
+        cat <<'EOF' > streamlit_exe/streamlit/config.toml
         [server]
         headless = true
         port = 8505
@@ -223,12 +223,6 @@ jobs:
         [browser]
         gatherUsageStats = false
         EOF
-        
-    - name: Verify .streamlit folder contents
-      shell: bash
-      run: |
-        echo "Listing contents of streamlit_exe/.streamlit"
-        ls -R streamlit_exe/.streamlit
     
     - name: Generate Readme.txt
       shell: bash
