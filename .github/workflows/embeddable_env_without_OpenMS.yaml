@@ -148,6 +148,9 @@ jobs:
         REM Copy NuXL share folder to pyopenms share
         xcopy /E /I /Y ".\share\OpenMS\NuXL" ".\python-3.10.0\Lib\site-packages\pyopenms\share\OpenMS\NuXL"
 
+        #Rename folder
+        ren "streamlit" ".streamlit"
+
         REM Create marker only after full success
         echo OK>"%MARKER%"
         
