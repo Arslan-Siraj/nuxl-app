@@ -1,4 +1,4 @@
-name: Build embeddable python env with App
+name: Build windows executable without packaging
 on:
   #push:
   #  branches: 
