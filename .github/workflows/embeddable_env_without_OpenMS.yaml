@@ -146,7 +146,7 @@ jobs:
         )
 
         REM Copy NuXL share folder to pyopenms share
-        xcopy /E /I /Y ".\share\OpenMS\NuXL" ".\python-3.10.0\Lib\site-packages\pyopenms\share\OpenMS\NuXL"
+        xcopy /E /I /Y ".\NuXL" ".\python-3.10.0\Lib\site-packages\pyopenms\share\OpenMS\NuXL"
 
         REM Rename folder
         ren "streamlit" ".streamlit"
