@@ -16,7 +16,6 @@ Rescoring refers to the post-processing of initial identification results to imp
     - **NuXL rescore:**
         Siraj, A., Bouwmeester, R., Declercq, A., Welp, L., Chernev, A., Wulf, A., ... & Sachsenberg, T. (2024). Intensity and retention time prediction improves the rescoring of protein‐nucleic acid cross‐links. Proteomics, 24(8), 2300144.[https://doi.org/10.1002/pmic.202300144](https://doi.org/10.1002/pmic.202300144)
        
-
   
 **powered by:**
 
