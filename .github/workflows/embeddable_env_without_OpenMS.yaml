@@ -217,14 +217,15 @@ jobs:
         mkdir -p streamlit_exe/streamlit
     
         cat <<'EOF' > streamlit_exe/streamlit/config.toml
+        [global]
+        developmentMode = false
+        
         [server]
-        headless = true
-        port = 8505
-        enableCORS = false
-        enableXsrfProtection = false
+        maxUploadSize = 50000
+        port = 8505 
     
-        [browser]
-        gatherUsageStats = false
+        [theme]
+        primaryColor = "#29379b"
         EOF
     
     - name: Generate Readme.txt
@@ -239,7 +240,7 @@ jobs:
         - If multiple Streamlit apps are running, you can change the port in the .streamlit/config.toml file.
           Example:
             [server]
-            port = 8502
+            port = 8505
         Reach out to us:
         - Join our Discord server for support and community discussions: https://discord.com/invite/4TAGhqJ7s5
         - Contribute or stay updated with the latest OpenMS web app developments on GitHub: https://github.com/OpenMS/streamlit-template
