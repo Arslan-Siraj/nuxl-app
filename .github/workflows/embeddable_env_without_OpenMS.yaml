@@ -195,6 +195,7 @@ jobs:
     
         # Copy share folder
         #cp -r openms-share/* streamlit_exe/share/
+        cp -r openms-share/OpenMS/NuXL streamlit_exe/NuXL/
   
         # copy chemistry outside
         cp -r openms-share/OpenMS/CHEMISTRY streamlit_exe/
