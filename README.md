@@ -3,8 +3,8 @@
 Welcome to the OpenMS NuXL App, a web application for the NuXL protein-nucleic acid search engine built using [OpenMS](https://openms.de/) and [pyOpenMS](https://pyopenms.readthedocs.io/en/latest/).<br/>
 **website:** [https://abi-services.cs.uni-tuebingen.de/nuxl/](https://abi-services.cs.uni-tuebingen.de/nuxl/)
 
-## NuXL
-- **Description:** NuXL is a dedicated software package designed for the analysis of XL-MS (cross-linking mass spectrometry) data obtained from UV and chemically crosslinked protein–RNA/DNA samples. This powerful tool allows for reliable, FDR-controlled assignment of protein–nucleic acid crosslinking sites in samples treated with UV light or chemical crosslinkers. It offers user-friendly matched spectra visualization, including ion annotations.
+## Description
+NuXL is a dedicated software package designed for the analysis of XL-MS (cross-linking mass spectrometry) data obtained from UV and chemically crosslinked protein–RNA/DNA samples. This powerful tool allows for reliable, FDR-controlled assignment of protein–nucleic acid crosslinking sites in samples treated with UV light or chemical crosslinkers. It offers user-friendly matched spectra visualization, including ion annotations.
 
 - **Reference:** 
     - **NuXL search engine:**
@@ -44,12 +44,13 @@ Users can download the example files from **Load example file** tab to current w
 ### 3. ⚙️ Analyze your uploaded data
 
 Select the `.mzML/.raw` and `.fasta` files for analysis, configure user settings including NuXL advanced parameters, and start the analysis using the **Run-analysis** button.
+
 You can terminate the analysis immediately using the **Terminate/Clear** button and you can see the real-time log of search engine.
 Once the analysis completed successfully, the output table will be displayed on the page, along with downloadable links for crosslink identification files for that particular analysis.
 
 ### 4. ⚙️ Rescoring
 
-Select without FDR-controlled `.idXML` file from output of NuXL search engine. The name of file pattern is `(raw or mzML file_name).idXML`. If the NuxL searc engine succesfully run, the file will showup here. After including the features start the analysis using the **Run-rescoring** button.
+Select without FDR-controlled `.idXML` file from output of NuXL search engine. The name of file pattern is `(raw or mzML file_name).idXML`. If the NuxL search engine succesfully run, the file will showup here. After including the features start the analysis using the **Run-rescoring** button.
 
 You can terminate the rescoring analysis immediately using the **Terminate/Clear** button and you can see the real-time log of rescoring.
 Once the analysis completed successfully, the comparison PseudoROC curve at CSM-level FDR will generated, and available for download.
