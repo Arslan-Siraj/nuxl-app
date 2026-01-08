@@ -1,6 +1,9 @@
 name: Docker Image CI
 
 on:
+  push:
+    branches: 
+      - main
   workflow_dispatch:
   pull_request:
     branches: [ "main" ]
@@ -23,5 +26,5 @@ jobs:
           docker buildx build \
             --progress=plain \
             --load \
-            -t streamlitapp:latest \
+            -t nuxl-app:latest \
             -f Dockerfile .

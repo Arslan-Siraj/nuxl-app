@@ -1,17 +1,11 @@
 name: Build executable for Windows
 on:
-  #push:
-  #  branches: 
-  #    - main
-  #    - development
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
   
 env:
   OPENMS_VERSION: 3.5.0 
   # Define unique GUID for UpgradeCode
-  APP_UpgradeCode: "31703de0-3422-444a-a469-8df83635bd6d"
+  APP_UpgradeCode: "c1c7c11f-b063-4100-9854-af555d1b26d1"
   # Define needed TOPP tools here
   TOPP_TOOLS: "OpenNuXL"
 

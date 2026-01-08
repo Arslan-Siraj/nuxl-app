@@ -1,11 +1,5 @@
 name: Build windows executable without packaging
 on:
-  #push:
-  #  branches: 
-  #    - main
-  #    - development
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
   
 env:
