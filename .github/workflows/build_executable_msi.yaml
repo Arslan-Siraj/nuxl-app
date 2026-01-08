@@ -10,7 +10,7 @@ on:
 env:
   PYTHON_VERSION: 3.10.0
   # Define unique GUID for UpgradeCode
-  APP_UpgradeCode: "c1c7c11f-b063-4100-9854-af555d1b26d1
+  APP_UpgradeCode: "c1c7c11f-b063-4100-9854-af555d1b26d1"
   # Define needed TOPP tools need in NuXLApp
   TOPP_TOOLS: "OpenNuXL FileConverter PercolatorAdapter"
   # App name
