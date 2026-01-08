@@ -346,8 +346,8 @@ if submit_button:
             variables = []  
 
             # want to see the command values and argues
-            message = f"Running '{' '.join(args)}'"
-            st.info(message)
+            #message = f"Running '{' '.join(args)}'"
+            #st.info(message)
             st.info(f"Analyzing {mzML_file_name}",  icon="ℹ️")
 
             # run subprocess command
@@ -365,6 +365,7 @@ if submit_button:
         delete_files(directory = Path(st.session_state.workspace, "mzML-files"), remove_files_end_with = '.raw.mzML')
 
     search_param = textwrap.dedent(f"""\
+            OpenMS verison: {params["openms-version"]}
             ======= Search Parameters ==========
             Selected mzML File: {mzML_file_path}
             Selected FASTA File: {database_file_path}

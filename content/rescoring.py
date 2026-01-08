@@ -181,7 +181,7 @@ else:
             # run the different combinations of features
             # RT_feat_
             if Retention_time_features and not Max_correlation_features:
-                st.write("Using ONLY retention time features.")
+                st.write("Adapting ONLY retention time features.")
                 if os.name == 'nt':
                     # Assume 'posix' for Linux and macOS
                     args =[nuxl_rescore_exec, "-m", "nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
@@ -194,7 +194,7 @@ else:
             
             # Int_feat_
             elif not Retention_time_features and Max_correlation_features:
-                st.write("Using ONLY max correlation feature.")
+                st.write("Adapting ONLY max correlation feature.")
                 # Assume 'posix' for Linux and macOS
                 if os.name == 'nt':
                      args =[nuxl_rescore_exec, "-m", "nuxl_rescore", "run", "-id", idXML_file,"-rt_model", "None", "-ms2pip", 
@@ -207,7 +207,7 @@ else:
 
             # RT_Int_feat_
             elif Retention_time_features and Max_correlation_features:
-                st.write("Using retention time and max correlation feature.")
+                st.write("Adapting retention time and max correlation feature.")
                 # Assume 'posix' for Linux and macOS
                 if os.name == 'nt':
                     args =[nuxl_rescore_exec, "-m", "nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
@@ -234,8 +234,8 @@ else:
                 mgf_path = Path(st.session_state.workspace, "mzML-files", mgf_file)
                 mzML_path = Path(st.session_state.workspace, "mzML-files", mzML_file)
 
-                print("mgf_file_path:", mgf_path)
-                print("mzML_file_path:", mzML_path)
+                #print("mgf_file_path:", mgf_path)
+                #print("mzML_file_path:", mzML_path)
 
                 if not mgf_path.exists():
                     if not mzML_path.exists():
@@ -283,10 +283,11 @@ else:
             args.extend(["-perc_adapter", "PercolatorAdapter"])
 
             # want to see the command values and argues
-            message = f"Running '{' '.join(args)}'"
-            st.info(message)
-            st.info("check inputs plot: " + str(idXML_file_100_XLs)+' and '+ str(idXML_file_extra_100_XLs)+' '+ str(Path(idXML_file).stem))
+            #message = f"Running '{' '.join(args)}'"
+            #st.info(message)
+            #st.info("check inputs plot: " + str(idXML_file_100_XLs)+' and '+ str(idXML_file_extra_100_XLs)+' '+ str(Path(idXML_file).stem))
             # run subprocess command
+            st.info(f"Rescoring {selected_id_file}",  icon="ℹ️")
             run_subprocess(args, variables, result_dict)
 
         # Check if the subprocess was successful
