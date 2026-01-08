@@ -1,4 +1,4 @@
-name: Build executable for Windows
+name: Build OpenMS package
 on:
   workflow_dispatch:
   
