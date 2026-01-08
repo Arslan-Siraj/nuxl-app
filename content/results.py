@@ -29,7 +29,7 @@ def process_mzML_file(filepath):
     Returns:
     MSExperiment: An MSExperiment object containing the normalized MS2 spectra.
     """
-    print("process mzML file: ", filepath)
+    #print("process mzML file: ", filepath)
 
     try:
         # Initialize an MSExperiment object
@@ -234,7 +234,7 @@ with tabs[0]:
                         if annotation_data:
                             # Create the DataFrame
                             annotation_df = pd.DataFrame(annotation_data)
-                            annotation_df.to_csv(str(selected_row[0]['ScanNr']) + "_idxml_annot_full.csv")
+                            #annotation_df.to_csv(str(selected_row[0]['ScanNr']) + "_idxml_annot_full.csv")
                             # title of spectra
                             spectra_name = os.path.splitext(selected_file)[0] +" Scan# " + str({selected_row[0]['ScanNr']}).strip('{}') + " Pep: " + str({selected_row[0]['Peptide']}).strip('{}\'') +  " + " +str ({selected_row[0]['NuXL:NA']}).strip('{}\'')
                             # generate ms2 spectra
@@ -311,8 +311,24 @@ with tabs[0]:
                                 #title='Percentage of PSMs for Each Index Precursor'
                             )])
 
+                            n_items = len(precursor_summary)
+
+                            base_height = 350          # minimum readable height
+                            per_item_height = 22       # legend-driven scaling
+
+                            dynamic_height = max(
+                                base_height,
+                                base_height + n_items * per_item_height
+                            )
+
+                            adducts_fig.update_layout(
+                                height=dynamic_height,
+                                margin=dict(l=15, r=15, t=15, b=15),
+                            )
+
                             #show figure, with download
                             show_fig(adducts_fig , f"{os.path.splitext(new_filename)[0]}_adduct_summary")
+                            v_space(1)
                             #show button of download table from where above plot came
                             download_table(precursor_summary, f"{os.path.splitext(new_filename)[0]}_adduct_summary")
 
