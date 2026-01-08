@@ -14,8 +14,8 @@ ARG OPENMS_REPO=https://github.com/OpenMS/OpenMS.git
 ARG OPENMS_BRANCH=release/3.5.0
 ARG PORT=8501
 # GitHub token to download latest OpenMS executable for Windows from Github action artifact.
-ARG GITHUB_TOKEN
-ENV GH_TOKEN=${GITHUB_TOKEN}
+#ARG GITHUB_TOKEN
+#ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
 ARG GITHUB_USER=OpenMS
 # Streamlit app Gihub repository name (to download artifact from).
@@ -161,12 +161,9 @@ RUN mamba run -n streamlit-env python hooks/hook-analytics.py
 RUN jq '.online_deployment = true' settings.json > tmp.json && mv tmp.json settings.json
 
 # Download latest OpenMS App executable as a ZIP file
-RUN if [ -n "$GH_TOKEN" ]; then \
-        echo "GH_TOKEN is set, proceeding to download the release asset..."; \
-        gh release download -R ${GITHUB_USER}/${GITHUB_REPO} -p "OpenMS-NuXLApp.zip" -D /app; \
-    else \
-        echo "GH_TOKEN is not set, skipping the release asset download."; \
-    fi
+RUN curl -L \
+  -o /app/OpenMS-NuXLApp.zip \
+  https://github.com/Arslan-Siraj/nuxl-app/releases/download/0.2.0/OpenMS-NuXLApp.zip
 
 # Run app as container entrypoint.
 EXPOSE $PORT
