@@ -365,7 +365,8 @@ if submit_button:
         delete_files(directory = Path(st.session_state.workspace, "mzML-files"), remove_files_end_with = '.raw.mzML')
 
     search_param = textwrap.dedent(f"""\
-            OpenMS verison: {params["openms-version"]}
+            ======= NuXL version ==========
+            OpenMS verison: {st.session_state.settings['openms-version']}
             ======= Search Parameters ==========
             Selected mzML File: {mzML_file_path}
             Selected FASTA File: {database_file_path}
