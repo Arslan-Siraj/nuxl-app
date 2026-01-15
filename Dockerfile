@@ -17,7 +17,7 @@ ARG PORT=8501
 #ARG GITHUB_TOKEN
 #ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
-ARG GITHUB_USER=OpenMS
+ARG GITHUB_USER=Arslan-Siraj
 # Streamlit app Gihub repository name (to download artifact from).
 ARG GITHUB_REPO=nuxl-app
 
