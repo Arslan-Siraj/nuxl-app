@@ -14,8 +14,8 @@ ARG OPENMS_REPO=https://github.com/OpenMS/OpenMS.git
 ARG OPENMS_BRANCH=release/3.5.0
 ARG PORT=8501
 # GitHub token to download latest OpenMS executable for Windows from Github action artifact.
-#ARG GITHUB_TOKEN
-#ENV GH_TOKEN=${GITHUB_TOKEN}
+ARG GITHUB_TOKEN
+ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
 ARG GITHUB_USER=OpenMS
 # Streamlit app Gihub repository name (to download artifact from).
@@ -58,12 +58,6 @@ RUN echo "mamba activate streamlit-env" >> ~/.bashrc
 SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
 SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
 
-# Setup mamba environment.
-#RUN mamba create -n streamlit-env python=3.10
-#RUN echo "mamba activate streamlit-env" >> ~/.bashrc
-#SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
-#SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
-
 # Install up-to-date cmake via mamba and packages for pyOpenMS build.
 RUN mamba install cmake
 RUN pip install --upgrade pip && python -m pip install -U setuptools nose cython autowrap pandas numpy pytest
@@ -95,17 +89,12 @@ RUN /bin/bash -c "cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_PREFIX_PATH='/OpenM
 RUN make -j4 TOPP
 RUN rm -rf src doc CMakeFiles
 
-# Build pyOpenMS wheels and install via pip.
-#RUN make -j4 pyopenms
-#WORKDIR /openms-build/pyOpenMS
-#RUN pip install dist/*.whl
-
 # Install other dependencies (excluding pyopenms)
 #COPY requirements.txt ./requirements.txt 
 #RUN grep -Ev '^pyopenms([=<>!~].*)?$' requirements.txt > requirements_cleaned.txt && mv requirements_cleaned.txt requirements.txt
 #RUN pip install -r requirements.txt
 
-RUN pip install nuxl-rescore==0.2.0
+#RUN pip install nuxl-rescore==0.2.0
 
 WORKDIR /
 RUN mkdir openms
@@ -115,8 +104,8 @@ RUN cp -r openms-build/bin /openms/bin
 ENV PATH="/openms/bin/:${PATH}"
 
 # Copy TOPP tools bin directory, add to PATH.
-#RUN cp -r openms-build/lib /openms/lib
-#ENV LD_LIBRARY_PATH="/openms/lib/:${LD_LIBRARY_PATH}"
+RUN cp -r openms-build/lib /openms/lib
+ENV LD_LIBRARY_PATH="/openms/lib/:${LD_LIBRARY_PATH}"
 
 # Copy share folder, add to PATH, remove source directory.
 RUN cp -r OpenMS/share/OpenMS /openms/share
@@ -160,10 +149,13 @@ RUN mamba run -n streamlit-env python hooks/hook-analytics.py
 # Set Online Deployment
 RUN jq '.online_deployment = true' settings.json > tmp.json && mv tmp.json settings.json
 
-# Download latest OpenMS App executable as a ZIP file
-RUN curl -L \
-  -o /app/OpenMS-NuXLApp.zip \
-  https://github.com/Arslan-Siraj/nuxl-app/releases/download/0.2.0/OpenMS-NuXLApp.zip
+# Download latest OpenMS NuXLApp executable as a ZIP file
+RUN if [ -n "$GH_TOKEN" ]; then \
+        echo "GH_TOKEN is set, proceeding to download the release asset..."; \
+        gh release download -R ${GITHUB_USER}/${GITHUB_REPO} -p "OpenMS-NuXLApp.zip" -D /app; \
+    else \
+        echo "GH_TOKEN is not set, skipping the release asset download."; \
+    fi
 
 # Run app as container entrypoint.
 EXPOSE $PORT
