@@ -243,10 +243,10 @@ def plot_FDR_plot(idXML_id, idXML_extra, exp_name= "FileName", FDR_level=10):
     ax.legend()
 
     # ---------- Save figure (no os used) ----------
-    output_pdf = idXML_id.replace(".idXML", "") + ".pdf"
+    output_pdf = idXML_extra.replace(".idXML", "") + "_rescore_comparsion.pdf"
     fig.savefig(output_pdf, format="pdf", bbox_inches="tight")
 
     # ---------- Render in Streamlit ----------
     #st.pyplot(fig)
-    return fig
+    return fig, output_pdf
     

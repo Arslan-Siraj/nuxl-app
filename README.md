@@ -58,7 +58,7 @@ Select without FDR-controlled `.idXML` file from output of NuXL search engine. T
 You can terminate the rescoring analysis immediately using the **Terminate/Clear** button and you can see the real-time log of rescoring.
 Once the analysis completed successfully, the comparison PseudoROC curve at CSM-level FDR will generated, and available for download.
 
-#### 5. 📊 View your results
+### 5. 📊 View your results
 Here, you can visualize and explore the output of the search engine. All crosslink output files in the workspace are available on the **View Results** tab.
 After selecting any file, you can view the `CSMs Table`, `PRTs Table`, `PRTs Summary`, `Crosslink efficiency` and `Precursor adducts summary`.
 
@@ -66,7 +66,7 @@ Users can manage their result files available in workspace with `Result files` t
 
 Note: Every table and plot can be downloaded, as indicated formats in the side-bar under ⚙️ Settings.
 
-## How to upload result files (e.g., from external sources/collaborator) for manual inspection and visualization?
+### How to upload result files (e.g., from external sources/collaborator) for manual inspection and visualization?
 At **Upload result files** tab, user can  `upload` the results files and can visualize in **View Results** tab.
 In the web app, collaborators can visualize files by sharing a unique workspace ID.
 
