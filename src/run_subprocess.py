@@ -57,6 +57,10 @@ def run_subprocess(args: list[str], variables: list[str], result_dict: dict) -> 
 
             line = output.strip()
 
+             # skip empty lines
+            if not line:
+                continue
+
             # suppress known non-fatal warnings
             if any(p in line for p in SUPPRESSED_PATTERNS_out):
                 #stderr_.append(line)   # keep in log if you want
