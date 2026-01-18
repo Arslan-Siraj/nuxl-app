@@ -62,6 +62,8 @@ with st.form("library_generation_form", clear_on_submit=False):
       help="This will be name of the file generated as library: please specify the name"
     )
 
+    run_FileInfo = st.checkbox("Run mzML FileInfo", value = True, help="If checked, FileInfo will be run on the selected mzML files to provide additional information in log.")
+
     # Submit button
     submit_button = st.form_submit_button("Generate Library", type="primary")
 
@@ -136,7 +138,7 @@ if submit_button:
             console_output = st.empty()  # placeholder for messages
             # --- Display matched idXML files ---
             if matched_idxmls:
-                  log_text = "==> Corresponding idXML filenames for selected experiment mzML/raw files:\n"
+                  log_text = "====> Corresponding idXML filenames for selected experiment mzML/raw files <====\n"
                   for f in matched_idxmls:
                         log_text += f"- {f}\n"
             
@@ -145,7 +147,7 @@ if submit_button:
 
                   if not user_library_name:  # If input is empty
                               user_library_name = f"library_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                              log_text += f"\n==> Library output file name tag is empty!!! tag name generated: {user_library_name}\n"
+                              log_text += f"\n====> Library output file name tag is empty!!! tag name generated: {user_library_name} <====\n"
                               console_output.text(log_text)
 
                   output_folder_library = Path(
@@ -160,27 +162,27 @@ if submit_button:
                         
                         # Create the folder
                         output_folder_library.mkdir(parents=True)
-                        log_text += f"\n==> Output folder created: {output_folder_library}\n"
+                        log_text += f"\n====> Output folder created: {output_folder_library} <====\n"
                         console_output.text(log_text)
 
                   except FileExistsError as e:
-                        log_text += f"\n==> ERROR: {e}\n"
+                        log_text += f"\n====> ERROR: {e}\n"
                         console_output.text(log_text)
                         st.error(f"Library output folder already exists: {output_folder_library}. Please choose a different library output file name tag.")
                         st.stop()
 
-            log_text += "\n==> Exporting idXML files to TextExporter format\n"
+            log_text += "\n====> Exporting idXML files to TextExporter format <====\n"
             console_output.text(log_text)
 
+            TextExporter_exec = os.path.join(os.getcwd(),'TextExporter')
             for idxml_file in matched_idxmls:
                   # Input file: from result-files folder
                   idxml_path_in = Path(st.session_state.workspace, "result-files", idxml_file)
 
                   # Output file: same folder, stem + .unknown
                   idxml_path_out = output_folder_library / (idxml_path_in.stem + ".unknown")
-                  TextExporter_exec = os.path.join(os.getcwd(),'TextExporter')
                   # Append current file being processed
-                  log_text += f"Processing idxml_file: {idxml_file}\n"
+                  log_text += f"--->Processing idxml_file: {idxml_file}\n"
                   console_output.text(log_text)
 
                   if os.name == 'nt':
@@ -210,12 +212,58 @@ if submit_button:
                   if result.returncode != 0:
                         console_output.text("idXML → TextExporter conversion failed")
                         st.text(result.stderr)
+                        st.error("TextExporter conversion failed")
                         st.stop()
                   else:
                         log_text += f"{result.stdout}\n"
-                        console_output.text(log_text)
+                        console_output.text(log_text) 
 
-            log_text += "==> Generating library\n"
+            #--------------- File Info---------------------
+
+            log_text += "====> mzML file Info <====\n"
+            console_output.text(log_text)
+
+            FileInfo_exec = os.path.join(os.getcwd(), 'FileInfo')
+            #st.write(selected_mzML_files)
+            for mzml_file in selected_mzML_files:
+                  # Input file: from result-files folder
+                  mzml_path_in = Path(st.session_state.workspace, "mzML-files", mzml_file)
+
+                  # Append current file being processed
+                  log_text += f"---> Processing mzml file FileInfo: {mzml_file}\n"
+                  console_output.text(log_text)
+
+                  if os.name == 'nt':
+                        args_FileInfo = [
+                                          FileInfo_exec,
+                                          "-in", str(mzml_path_in)
+                                    ]
+                  else:
+                        args_FileInfo = [
+                                          "FileInfo",
+                                          "-in", str(mzml_path_in)
+                                    ]
+
+                  #st.info(f"Running: {' '.join(args_convert)}")
+
+                  result_FileInfo = subprocess.run(
+                              args_FileInfo,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              text=True
+                        )
+
+                  if result_FileInfo.returncode != 0:
+                              console_output.text("FileInfo failed")
+                              st.text(result.stderr)
+                              st.error("FileInfo failed")
+                              st.stop()
+                  else:
+                        log_text += f"{result_FileInfo.stdout}\n"
+                        console_output.text(log_text) 
+  
+            #------------------------------------
+            log_text += "====> Generating library <==== \n"
             console_output.text(log_text)
 
             # --- Python interpreter (always correct in Streamlit)
