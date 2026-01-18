@@ -62,7 +62,19 @@ with st.form("library_generation_form", clear_on_submit=False):
       help="This will be name of the file generated as library: please specify the name"
     )
 
-    run_FileInfo = st.checkbox("Run mzML FileInfo", value = True, help="If checked, FileInfo will be run on the selected mzML files to provide additional information in log.")
+    uploaded_file = st.file_uploader(
+      "Upload library file from MSFragger (optional)",
+      type=["tsv"],  # or restrict: ["tsv", "csv", "txt"]
+      help="This will used for iRT alignment in DIA analysis. Please upload a library file from MSFragger."
+    )
+
+    iRT_calibration_model = st.radio(
+      "iRT calibration model",
+      options=["linear", "piecewise"],
+      index=0,
+      help="Select the functional form used for iRT calibration."
+      )    
+    #run_FileInfo = st.checkbox("Run mzML FileInfo", value = True, help="If checked, FileInfo will be run on the selected mzML files to provide additional information in log.")
 
     # Submit button
     submit_button = st.form_submit_button("Generate Library", type="primary")
@@ -219,8 +231,7 @@ if submit_button:
                         console_output.text(log_text) 
 
             #--------------- File Info---------------------
-
-            log_text += "====> mzML file Info <====\n"
+            log_text += "====> mzML file Info with FileInfo OpenMS <====\n"
             console_output.text(log_text)
 
             FileInfo_exec = os.path.join(os.getcwd(), 'FileInfo')
@@ -261,8 +272,31 @@ if submit_button:
                   else:
                         log_text += f"{result_FileInfo.stdout}\n"
                         console_output.text(log_text) 
+            
+            #-------------------check FileInfo output-----------------
+            #if "ion mobility: <none> .. <none>" in result_FileInfo.stdout:
+            #      log_text += "\n====> WARNING: No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation. <====\n"
+            #      console_output.text(log_text)
+            #      st.error("No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation.")
+            #      st.stop()
+
+            #---------------upload the library file from MSFragger---------------------
+            if uploaded_file is not None:
+                  uploaded_path = output_folder_library / uploaded_file.name
+
+                  # Prevent accidental overwrite
+                  if uploaded_path.exists():
+                        st.error(f"File already exists in library folder: {uploaded_file.name}")
+                        st.stop()
+
+                  # Write file to disk
+                  with open(uploaded_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+
+                  log_text += f"====> Uploaded library file saved {uploaded_path.name} at {uploaded_path} <====\n\n"
+                  console_output.text(log_text)
   
-            #------------------------------------
+            #----------------Final library generation--------------------
             log_text += "====> Generating library <==== \n"
             console_output.text(log_text)
 
@@ -273,26 +307,53 @@ if submit_button:
             BASE_DIR = Path(__file__).resolve().parent.parent
             Gen_library_cmd = (BASE_DIR / "src" / "nuxl2dia.py").resolve()
 
-            # --- Expand input files explicitly (NO wildcards!)
-            unknown_xls = sorted(output_folder_library.glob("*_XLs.unknown"))
-            unknown_pep = sorted(output_folder_library.glob("*_peptides.unknown"))
 
-            if not unknown_xls or not unknown_pep:
-                  st.error("Required .unknown files not found for library generation.")
-                  st.stop()
+            if uploaded_file is not None:
+                  unknown_files = sorted(output_folder_library.glob("*.unknown"))
 
-            # --- Build arguments
-            args_gen_lib = [
-                  python_exec,
-                  str(Gen_library_cmd),
-                  "-i",
-                  *map(str, unknown_xls),
-                  *map(str, unknown_pep),
-                  "-o",
-                  str(output_folder_library / f"{library_name_input}.tsv"),
-            ]
+                  if not unknown_files:
+                        st.error("Required .unknown files not found for library generation.")
+                        st.stop()
 
-            #st.info("Running:\n" + " ".join(args_gen_lib))
+                  # --- Build arguments
+                  args_gen_lib = [
+                        python_exec,
+                        str(Gen_library_cmd),
+                        "-i",
+                        *map(str, unknown_files),
+                        "-o",
+                        str(output_folder_library / f"{library_name_input}.tsv"),
+                        "--irt",
+                        str(iRT_calibration_model),
+                        "--irt-ref",
+                        str(uploaded_path)
+                  ]
+                 
+            else:
+                  log_text += "====> No iRT library file uploaded; skipping iRT alignment. <====\n\n"
+                  console_output.text(log_text)
+
+                  # --- Expand input files explicitly (NO wildcards!)
+                  unknown_xls = sorted(output_folder_library.glob("*_XLs.unknown"))
+                  unknown_pep = sorted(output_folder_library.glob("*_peptides.unknown"))
+
+                  if not unknown_xls or not unknown_pep:
+                        st.error("Required .unknown files not found for library generation.")
+                        st.stop()
+
+                  # --- Build arguments
+                  args_gen_lib = [
+                        python_exec,
+                        str(Gen_library_cmd),
+                        "-i",
+                        *map(str, unknown_xls),
+                        *map(str, unknown_pep),
+                        "-o",
+                        str(output_folder_library / f"{library_name_input}.tsv"),
+                  ]
+
+
+            st.info("Running:\n" + " ".join(args_gen_lib))
 
             result = subprocess.run(
                   args_gen_lib,
@@ -310,9 +371,9 @@ if submit_button:
                   console_output.text(log_text)
             
       
-
 #include peptides?
 # FDR cutoffs?
 
 ## validation
 save_params(params)
+    
