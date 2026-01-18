@@ -9,6 +9,7 @@ from pathlib import Path
 from zipfile import ZipFile
 from pyopenms import IdXMLFile
 from src.common import reset_directory
+import zipfile
 
 def add_to_result(filename: str):
     """
@@ -447,3 +448,42 @@ def read_protein_table(input_file):
         section_dfs.append(section_df)
 
     return section_dfs
+
+#########dia page ##########
+def download_folder_library(folder_path: Path | str, link_name: str, zip_name: str = "selected_files.zip") -> None:
+      """
+      Create a Streamlit download link for a folder zipped into a single file.
+
+      Parameters
+      ----------
+      folder_path : Path or str
+            Path to the folder to be zipped and downloaded.
+      link_name : str
+            Text displayed for the download link.
+      zip_name : str, optional
+            Name of the downloaded ZIP file.
+      """
+
+      folder_path = Path(folder_path)
+      if not folder_path.is_dir():
+            raise ValueError(f"Provided path is not a directory: {folder_path}")
+
+      # Create an in-memory ZIP file
+      buffer = io.BytesIO()
+      with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in folder_path.rglob("*"):
+                  if file_path.is_file():
+                        # Keep relative path in ZIP
+                        zipf.write(file_path, arcname=file_path.relative_to(folder_path))
+
+      buffer.seek(0)
+      b64_zip_content = base64.b64encode(buffer.read()).decode("utf-8")
+
+      # Generate HTML link for Streamlit
+      href = (
+            f'<a href="data:application/zip;base64,{b64_zip_content}" '
+            f'download="{zip_name}">{link_name}</a>'
+      )
+      st.markdown(href, unsafe_allow_html=True)
+
+
