@@ -17,7 +17,7 @@ if 'controllo' not in st.session_state or params["controllo"] == False:
     captcha_control()
 
 st.title("DIA library generation", 
-         help="Generate spectral libraries from identification results for DIA analysis. Used OpenNuXL identification files"
+         help="Generate spectral libraries from identification results for DIA analysis. Used OpenNuXL identification files. ref: https://github.com/timosachsenberg/NuXLDIA"
         )
 
 if "selected-result-files" not in st.session_state:
@@ -147,20 +147,24 @@ if submit_button:
                         )
                   st.stop()  # Stop the app if required files are missing
 
-            console_output = st.empty()  # placeholder for messages
+            console_output = st.empty()
+
+            # Central log buffer
+            log_lines: list[str] = []
+
+            def log(msg: str):
+                  log_lines.append(msg)
+                  console_output.text("".join(log_lines))
+
             # --- Display matched idXML files ---
             if matched_idxmls:
-                  log_text = "====> Corresponding idXML filenames for selected experiment mzML/raw files <====\n"
+                  log("====> Corresponding idXML filenames for selected experiment mzML/raw files <====\n")
                   for f in matched_idxmls:
-                        log_text += f"- {f}\n"
-            
-                  # Show filenames
-                  console_output.text(log_text)
+                        log(f"- {f}\n")
 
                   if not user_library_name:  # If input is empty
                               user_library_name = f"library_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                              log_text += f"\n====> Library output file name tag is empty!!! tag name generated: {user_library_name} <====\n"
-                              console_output.text(log_text)
+                              log(f"\n====> Library output file name tag is empty!!! tag name generated: {user_library_name} <====\n")
 
                   output_folder_library = Path(
                               st.session_state.workspace,
@@ -174,18 +178,15 @@ if submit_button:
                         
                         # Create the folder
                         output_folder_library.mkdir(parents=True)
-                        log_text += f"\n====> Output folder created: {output_folder_library} <====\n"
-                        console_output.text(log_text)
+                        log(f"\n====> Output folder created: {output_folder_library} <====\n")
 
                   except FileExistsError as e:
-                        log_text += f"\n====> ERROR: {e}\n"
-                        console_output.text(log_text)
+                        log(f"\n====> ERROR: {e}\n")
                         st.error(f"Library output folder already exists: {output_folder_library}. Please choose a different library output file name tag.")
                         st.stop()
 
-            log_text += "\n====> Exporting idXML files to TextExporter format <====\n"
-            console_output.text(log_text)
-
+            log("\n====> Exporting idXML files to TextExporter format <====\n")
+            
             TextExporter_exec = os.path.join(os.getcwd(),'TextExporter')
             for idxml_file in matched_idxmls:
                   # Input file: from result-files folder
@@ -194,9 +195,8 @@ if submit_button:
                   # Output file: same folder, stem + .unknown
                   idxml_path_out = output_folder_library / (idxml_path_in.stem + ".unknown")
                   # Append current file being processed
-                  log_text += f"--->Processing idxml_file: {idxml_file}\n"
-                  console_output.text(log_text)
-
+                  log(f"--->Processing idxml_file: {idxml_file}\n")
+                  
                   if os.name == 'nt':
                         args_convert = [
                                           TextExporter_exec,
@@ -222,17 +222,15 @@ if submit_button:
                   )
 
                   if result.returncode != 0:
-                        console_output.text("idXML → TextExporter conversion failed")
-                        st.text(result.stderr)
+                        log("idXML → TextExporter conversion failed")
                         st.error("TextExporter conversion failed")
                         st.stop()
                   else:
-                        log_text += f"{result.stdout}\n"
-                        console_output.text(log_text) 
+                        log(f"{result.stdout}\n")
+       
 
             #--------------- File Info---------------------
-            log_text += "====> mzML file Info with FileInfo OpenMS <====\n"
-            console_output.text(log_text)
+            log("====> mzML file Info with FileInfo OpenMS <====\n")
 
             FileInfo_exec = os.path.join(os.getcwd(), 'FileInfo')
             #st.write(selected_mzML_files)
@@ -241,8 +239,7 @@ if submit_button:
                   mzml_path_in = Path(st.session_state.workspace, "mzML-files", mzml_file)
 
                   # Append current file being processed
-                  log_text += f"---> Processing mzml file FileInfo: {mzml_file}\n"
-                  console_output.text(log_text)
+                  log(f"---> Processing mzml file FileInfo: {mzml_file}\n")
 
                   if os.name == 'nt':
                         args_FileInfo = [
@@ -270,15 +267,13 @@ if submit_button:
                               st.error("FileInfo failed")
                               st.stop()
                   else:
-                        log_text += f"{result_FileInfo.stdout}\n"
-                        console_output.text(log_text) 
+                        log(f"{result_FileInfo.stdout}\n")
             
             #-------------------check FileInfo output-----------------
-            #if "ion mobility: <none> .. <none>" in result_FileInfo.stdout:
-            #      log_text += "\n====> WARNING: No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation. <====\n"
-            #      console_output.text(log_text)
-            #      st.error("No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation.")
-            #      st.stop()
+            if "ion mobility: <none> .. <none>" in result_FileInfo.stdout:
+                  log("\n====> WARNING: No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation. <====\n")
+                  st.error("No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation.")
+                  st.stop()
 
             #---------------upload the library file from MSFragger---------------------
             if uploaded_file is not None:
@@ -293,12 +288,10 @@ if submit_button:
                   with open(uploaded_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
 
-                  log_text += f"====> Uploaded library file saved {uploaded_path.name} at {uploaded_path} <====\n\n"
-                  console_output.text(log_text)
+                  log(f"====> Uploaded library file saved {uploaded_path.name} at {uploaded_path} <====\n\n")
   
             #----------------Final library generation--------------------
-            log_text += "====> Generating library <==== \n"
-            console_output.text(log_text)
+            log("====> Generating library <==== \n")
 
             # --- Python interpreter (always correct in Streamlit)
             python_exec = sys.executable
@@ -330,8 +323,7 @@ if submit_button:
                   ]
                  
             else:
-                  log_text += "====> No iRT library file uploaded; skipping iRT alignment. <====\n\n"
-                  console_output.text(log_text)
+                  log("\n====> No iRT library file uploaded; skipping iRT alignment. <====\n\n")
 
                   # --- Expand input files explicitly (NO wildcards!)
                   unknown_xls = sorted(output_folder_library.glob("*_XLs.unknown"))
@@ -367,13 +359,41 @@ if submit_button:
                   st.text(result.stderr)
                   st.stop()
             else:
-                  log_text += result.stdout + "\n"
-                  console_output.text(log_text)
-            
-      
+                  log(result.stdout + "\n")
+
+      #--------------- Save log file---------------------
+      log_file = output_folder_library / "library_generation.log"
+      with open(log_file, "w") as f:
+            f.writelines(log_lines)
+    
+      st.info(f"Preparing download link for library output files ...",  icon="ℹ️")
+      def download_folder(path, link_name: str, zip_name: str = "selected_files.zip") -> None:
+            """
+            Create and display a Streamlit download link for a folder packaged as a ZIP file.
+
+            Parameters
+            ----------
+            path : Path or str
+                  Path to the folder to be zipped and downloaded.
+            link_name : str
+                  Text displayed for the download link.
+            zip_name : str, optional
+                  Name of the downloaded ZIP file.
+            """
+            b64_zip_content = create_zip_and_get_base64(path)
+
+            href = (
+                  f'<a href="data:application/zip;base64,{b64_zip_content}" '
+                  f'download="{zip_name}">{link_name}</a>'
+            )
+
+            st.markdown(href, unsafe_allow_html=True)
+
+      download_folder(output_folder_library, f":arrow_down: {library_name_input}_library_out_files", zip_name=f"{library_name_input}_library_out_files.zip")
+      st.success("⚡️ **Library Generation Completed Successfully!** ⚡️")
+
 #include peptides?
 # FDR cutoffs?
 
 ## validation
 save_params(params)
-    
