@@ -57,10 +57,9 @@ with st.form("library_generation_form", clear_on_submit=False):
     )
 
     # Let user provide a library name tag
-    library_name = st.text_input(
-        "Library output file name tag",
-        value=f"library_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-        help="This will be name of the file generated as library: please specify the name"
+    library_name_input = st.text_input(
+      "Library output file name tag",
+      help="This will be name of the file generated as library: please specify the name"
     )
 
     # Submit button
@@ -77,7 +76,8 @@ def terminate_subprocess():
       terminate_flag.set()
 
 if submit_button:
-    
+    user_library_name = library_name_input.strip()
+
     if st.button("Terminate/Clear", key="terminate-button", type="secondary"):
       # terminate subprocess
       terminate_subprocess()
@@ -136,17 +136,40 @@ if submit_button:
             console_output = st.empty()  # placeholder for messages
             # --- Display matched idXML files ---
             if matched_idxmls:
-                  log_text = "Corresponding idXML filenames for selected experiment mzML/raw files:\n"
+                  log_text = "==> Corresponding idXML filenames for selected experiment mzML/raw files:\n"
                   for f in matched_idxmls:
                         log_text += f"- {f}\n"
             
                   # Show filenames
                   console_output.text(log_text)
-                  output_folder_library = Path(st.session_state.workspace, "result-files", library_name)
-                  output_folder_library.mkdir(parents=True, exist_ok=True)
 
+                  if not user_library_name:  # If input is empty
+                              user_library_name = f"library_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                              log_text += f"\n==> Library output file name tag is empty!!! tag name generated: {user_library_name}\n"
+                              console_output.text(log_text)
 
-            log_text += "\nExport idXML files to TextExporter format\n"
+                  output_folder_library = Path(
+                              st.session_state.workspace,
+                              "result-files",
+                              user_library_name
+                  )
+
+                  try:
+                        if output_folder_library.exists():
+                              raise FileExistsError(f"Library output folder already exists: {output_folder_library}")
+                        
+                        # Create the folder
+                        output_folder_library.mkdir(parents=True)
+                        log_text += f"\n==> Output folder created: {output_folder_library}\n"
+                        console_output.text(log_text)
+
+                  except FileExistsError as e:
+                        log_text += f"\n==> ERROR: {e}\n"
+                        console_output.text(log_text)
+                        st.error(f"Library output folder already exists: {output_folder_library}. Please choose a different library output file name tag.")
+                        st.stop()
+
+            log_text += "\n==> Exporting idXML files to TextExporter format\n"
             console_output.text(log_text)
 
             for idxml_file in matched_idxmls:
@@ -192,7 +215,7 @@ if submit_button:
                         log_text += f"{result.stdout}\n"
                         console_output.text(log_text)
 
-            log_text += "Generating library\n"
+            log_text += "==> Generating library\n"
             console_output.text(log_text)
 
             # --- Python interpreter (always correct in Streamlit)
@@ -218,7 +241,7 @@ if submit_button:
                   *map(str, unknown_xls),
                   *map(str, unknown_pep),
                   "-o",
-                  str(output_folder_library / f"{library_name}.tsv"),
+                  str(output_folder_library / f"{library_name_input}.tsv"),
             ]
 
             #st.info("Running:\n" + " ".join(args_gen_lib))
