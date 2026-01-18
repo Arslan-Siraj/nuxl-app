@@ -89,6 +89,7 @@ def terminate_subprocess():
       global terminate_flag
       terminate_flag.set()
 
+success_pipline = False
 if submit_button:
     user_library_name = library_name_input.strip()
 
@@ -299,8 +300,6 @@ if submit_button:
             # --- Script path (src is one level above cwd)
             BASE_DIR = Path(__file__).resolve().parent.parent
             Gen_library_cmd = (BASE_DIR / "src" / "nuxl2dia.py").resolve()
-
-
             if uploaded_file is not None:
                   unknown_files = sorted(output_folder_library.glob("*.unknown"))
 
@@ -321,7 +320,7 @@ if submit_button:
                         "--irt-ref",
                         str(uploaded_path)
                   ]
-                 
+            
             else:
                   log("\n====> No iRT library file uploaded; skipping iRT alignment. <====\n\n")
 
@@ -360,40 +359,20 @@ if submit_button:
                   st.stop()
             else:
                   log(result.stdout + "\n")
+                  log_file = output_folder_library / "library_generation.log"
+                  with open(log_file, "w") as f:
+                        f.write("===== version info =====\n")
+                        f.write(f"OpenMS version: {st.session_state.settings['openms-version']}")
+                        f.write(f"NuXLApp version: {st.session_state.settings['version']}")
+                        f.writelines(log_lines)
+                  success_pipline = True
 
-      #--------------- Save log file---------------------
-      log_file = output_folder_library / "library_generation.log"
-      with open(log_file, "w") as f:
-            f.writelines(log_lines)
-    
+    #--------------- Save log file---------------------
+    if success_pipline:
       st.info(f"Preparing download link for library output files ...",  icon="ℹ️")
-      def download_folder(path, link_name: str, zip_name: str = "selected_files.zip") -> None:
-            """
-            Create and display a Streamlit download link for a folder packaged as a ZIP file.
 
-            Parameters
-            ----------
-            path : Path or str
-                  Path to the folder to be zipped and downloaded.
-            link_name : str
-                  Text displayed for the download link.
-            zip_name : str, optional
-                  Name of the downloaded ZIP file.
-            """
-            b64_zip_content = create_zip_and_get_base64(path)
-
-            href = (
-                  f'<a href="data:application/zip;base64,{b64_zip_content}" '
-                  f'download="{zip_name}">{link_name}</a>'
-            )
-
-            st.markdown(href, unsafe_allow_html=True)
-
-      download_folder(output_folder_library, f":arrow_down: {library_name_input}_library_out_files", zip_name=f"{library_name_input}_library_out_files.zip")
+      download_folder_library(output_folder_library, f":arrow_down: {library_name_input}_library_out_files", zip_name=f"{library_name_input}_library_out_files.zip")
       st.success("⚡️ **Library Generation Completed Successfully!** ⚡️")
-
-#include peptides?
-# FDR cutoffs?
 
 ## validation
 save_params(params)
