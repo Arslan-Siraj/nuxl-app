@@ -7,6 +7,8 @@ from pathlib import Path
 from src.result_files import *
 from src.run_subprocess import *
 from src.view import plot_FDR_plot
+import textwrap
+from datetime import datetime
 
 #from nuxl_rescore import run_pipeline
 params = page_setup()
@@ -72,6 +74,7 @@ if not any(nuxl_rescore_dir.iterdir()):
     progress_bar.progress(100)
     status_text.text("Done!")
     st.success("Resources downloaded and extracted successfully.")
+    st.rerun()
 
 ##################################
 # Main Rescoring Page Content
@@ -176,7 +179,8 @@ else:
             #st.write(model_path)
             #st.write(calibration_data)
             idXML_file_100_XLs = result_dir / Path(idXML_file).name.replace(".idXML", "_perc_1.0000_XLs.idXML")
-            
+            idXML_file_1_XLs = result_dir / Path(idXML_file).name.replace(".idXML", "_perc_0.0100_XLs.idXML")
+
             nuxl_rescore_exec = os.path.join(os.getcwd(),'python-3.10.0', 'python')
             # run the different combinations of features
             # RT_feat_
@@ -191,6 +195,7 @@ else:
                         "-unimod", unimod, "-feat_config", feat_config, "-rt_model", "DeepLC", "-model_path", model_path, "-out", str(result_dir)] 
 
                 idXML_file_extra_100_XLs = result_dir / f"RT_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+                idXML_file_extra_1_XLs = result_dir / f"RT_feat_{Path(idXML_file).stem}_perc_0.0100_XLs.idXML"
             
             # Int_feat_
             elif not Retention_time_features and Max_correlation_features:
@@ -204,6 +209,7 @@ else:
                     args =["nuxl_rescore", "run", "-id", idXML_file,"-rt_model", "None", "-ms2pip", 
                         "-unimod", unimod, "-feat_config", feat_config, "-out", str(result_dir)] 
                 idXML_file_extra_100_XLs = result_dir / f"Int_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+                idXML_file_extra_1_XLs = result_dir / f"Int_feat_{Path(idXML_file).stem}_perc_0.0100_XLs.idXML"
 
             # RT_Int_feat_
             elif Retention_time_features and Max_correlation_features:
@@ -216,17 +222,19 @@ else:
                     args =["nuxl_rescore", "run", "-id", idXML_file, "-calibration", calibration_data,
                         "-unimod", unimod, "-rt_model", "DeepLC", "-ms2pip", "-feat_config", feat_config, "-model_path", model_path, "-out", str(result_dir)]
                 idXML_file_extra_100_XLs = result_dir / f"RT_Int_feat_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+                idXML_file_extra_1_XLs = result_dir / f"RT_Int_feat_{Path(idXML_file).stem}_perc_0.0100_XLs.idXML"
 
             else:
                 st.error("Please select at least one feature to use for rescoring.")
                 idXML_file_extra_100_XLs = result_dir / f"updated_{Path(idXML_file).stem}_perc_1.0000_XLs.idXML"
+                idXML_file_extra_1_XLs = result_dir / f"updated_{Path(idXML_file).stem}_perc_0.0100_XLs.idXML"
                 st.stop()
 
             # Add any additional variables needed for the subprocess (if any)
             variables = []  
 
+            id_file = Path(selected_id_file)
             if Max_correlation_features:
-                id_file = Path(selected_id_file)
 
                 mgf_file = id_file.with_suffix(".mgf")
                 mzML_file = id_file.with_suffix(".mzML")
@@ -287,11 +295,38 @@ else:
             #st.info(message)
             #st.info("check inputs plot: " + str(idXML_file_100_XLs)+' and '+ str(idXML_file_extra_100_XLs)+' '+ str(Path(idXML_file).stem))
             # run subprocess command
-            st.info(f"Rescoring {selected_id_file}",  icon="ℹ️")
+            st.info(f"Rescoring analysis of {selected_id_file}",  icon="ℹ️")
             run_subprocess(args, variables, result_dict)
+        
+        args_cmd = " ".join(map(str, args))
+        search_param = textwrap.dedent(f"""\
+            ======= Parameters ==========
+            NuXLApp verison: {st.session_state.settings['version']}
+            Selected idXML File: {idXML_file}
+            Protocol: {protocol}
+            Retention time features: {Retention_time_features}
+            Max correlation features: {Max_correlation_features}
+            Model path: {model_path if Retention_time_features else 'None'}
+            Calibration data: {calibration_data if Retention_time_features else 'None'}
+            Unimod file: {unimod}
+            Feature config: {feat_config}
+            ======= Executed command =======
+            {args_cmd}
+            """)
+
+        time_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file_path = result_dir / f'{id_file}_rescore_out_log_{time_stamp}.txt'
+
+        # Save the log to a text file in the result_dir
+        with open(log_file_path, "w") as log_file:
+                log_file.write(search_param)
+                log_file.write("\n======= Rescoring output ========== \n ")
+                log_file.write(result_dict["log"])
 
         # Check if the subprocess was successful
         if result_dict["success"]:
+            st.info(f"Rescoring analysis of **{log_file_path.name}** log file written in result folder with name {log_file_path.name}", icon="ℹ️")
+
             # Here can add code here to handle the results, e.g., display them to the user
             extensions_to_remove = {
                 ".csv",
@@ -304,19 +339,25 @@ else:
             for f in result_dir.iterdir():
                 if f.is_file() and f.suffix in extensions_to_remove:
                    f.unlink()
+            
+            files_to_download = [
+                log_file_path.name,
+                #idXML_file_extra_100_XLs.name,
+                idXML_file_extra_1_XLs.name,
+            ]
 
             if plot_PseudROC:
                 if not Path(idXML_file_100_XLs).exists():
                     st.warning(
-                        "The reference identification file without rescoring could not be found. "
-                        "Please run the NuXL search engine to enable a direct comparison "
-                        "and generate the Pseudo-ROC plot."
-                    )
-
+                                f"The reference identification file without rescoring could not be found. "
+                                f"Please run the NuXL search engine to enable a direct comparison "
+                                f"and generate the Pseudo-ROC plot. "
+                                f"It will not be added to the download files: {id_file}_rescoring_out_files"
+                            )
                 else:
                     #ploting_pseudoROC()
-                    st.info("Generating Pseudo-ROC plot ...")
-                    fig = plot_FDR_plot(
+                    st.info(f"Generating Pseudo-ROC plot...",  icon="ℹ️")
+                    fig, output_pdf = plot_FDR_plot(
                         idXML_id=str(idXML_file_100_XLs),
                         idXML_extra=str(idXML_file_extra_100_XLs),
                         FDR_level=20,
@@ -324,8 +365,22 @@ else:
                     )
 
                     #show figure
-                    show_fig(fig,  f"{Path(idXML_file).stem}_PseudoROC_plot_rescoring")
+                    show_fig(fig,  f"{Path(idXML_file_extra_100_XLs).stem}_PseudoROC_plot_rescoring")
 
+                    files_to_download.append(Path(output_pdf).name)
+                    #files_to_download.append(idXML_file_100_XLs.name)
+
+            if not Path(idXML_file_1_XLs).exists():
+                st.warning(
+                            f"The reference identification file without rescoring could not be found. "
+                            f"It will not be added to the download files: {id_file}_rescoring_out_files"
+                        )
+            else:
+                files_to_download.append(idXML_file_1_XLs.name)
+
+            st.info(f"Preparing download link for rescoring output files ...",  icon="ℹ️")
+            download_selected_result_files(files_to_download, f":arrow_down: {id_file}_rescoring_out_files")
+            
             st.success("⚡️ **Rescoring Completed Successfully!** ⚡️")
 
         else:

@@ -365,8 +365,9 @@ if submit_button:
         delete_files(directory = Path(st.session_state.workspace, "mzML-files"), remove_files_end_with = '.raw.mzML')
 
     search_param = textwrap.dedent(f"""\
-            ======= NuXL version ==========
+            ======= versions ==========
             OpenMS verison: {st.session_state.settings['openms-version']}
+            NuXLApp verison: {st.session_state.settings['version']}
             ======= Search Parameters ==========
             Selected mzML File: {mzML_file_path}
             Selected FASTA File: {database_file_path}
@@ -388,7 +389,7 @@ if submit_button:
             XLFDR: {XLFDR}
             """)
     time_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file_path = result_dir / f'{protocol_name}_log_{time_stamp}.txt'
+    log_file_path = result_dir / f'{protocol_name}_nuxl_out_log_{time_stamp}.txt'
 
     # Save the log to a text file in the result_dir
     with open(log_file_path, "w") as log_file:
@@ -398,8 +399,8 @@ if submit_button:
 
     # if run_subprocess success (no need if not success because error will show/display in run_subprocess command)
     if result_dict["success"]:
-        st.text_area("Analysis Log", value=result_dict["log"], height=300)
-
+        #st.text_area("Analysis Log", value=result_dict["log"], height=300)
+        st.info(f"NuXL analysis of **{mzML_file_name}** log file written in result folder with name {log_file_path.name}", icon="ℹ️")
         # add .mzML.ambigious_masses.csv in result directory 
         add_this_result_file(f"{protocol_name}.mzML.ambigious_masses.csv", Path(st.session_state.workspace, "mzML-files"))
         
@@ -426,6 +427,11 @@ if submit_button:
             identification_files = [string for string in current_analysis_files if "_perc_0.0100_XLs"  in string or "_perc_0.1000_XLs" in string or "_perc_1.0000_XLs" in string or "_perc_proteins" in string]
         else:
             identification_files = [string for string in current_analysis_files if "_XLs"  in string or "_proteins" in string]
+
+        # add log file to download zip
+        identification_files.append(log_file_path.name)
+
+        st.info(f"Preparing download link for NuXL output identification files ...",  icon="ℹ️")
 
         # then download link for identification file of above criteria 
         download_selected_result_files(identification_files, f":arrow_down: {protocol_name}_XL_identification_files")

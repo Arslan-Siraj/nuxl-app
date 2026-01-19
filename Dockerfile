@@ -17,7 +17,7 @@ ARG PORT=8501
 ARG GITHUB_TOKEN
 ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
-ARG GITHUB_USER=Arslan-Siraj
+ARG GITHUB_USER=OpenMS
 # Streamlit app Gihub repository name (to download artifact from).
 ARG GITHUB_REPO=nuxl-app
 
@@ -94,7 +94,7 @@ RUN rm -rf src doc CMakeFiles
 #RUN grep -Ev '^pyopenms([=<>!~].*)?$' requirements.txt > requirements_cleaned.txt && mv requirements_cleaned.txt requirements.txt
 #RUN pip install -r requirements.txt
 
-#RUN pip install nuxl-rescore==0.2.0
+RUN pip install nuxl-rescore==0.2.0
 
 WORKDIR /
 RUN mkdir openms
@@ -149,13 +149,10 @@ RUN mamba run -n streamlit-env python hooks/hook-analytics.py
 # Set Online Deployment
 RUN jq '.online_deployment = true' settings.json > tmp.json && mv tmp.json settings.json
 
-# Download latest OpenMS NuXLApp executable as a ZIP file
-RUN if [ -n "$GH_TOKEN" ]; then \
-        echo "GH_TOKEN is set, proceeding to download the release asset..."; \
-        gh release download -R ${GITHUB_USER}/${GITHUB_REPO} -p "OpenMS-NuXLApp.zip" -D /app; \
-    else \
-        echo "GH_TOKEN is not set, skipping the release asset download."; \
-    fi
+# Download latest OpenMS App executable as a ZIP file
+RUN curl -L \
+  -o /app/OpenMS-NuXLApp.zip \
+  https://github.com/Arslan-Siraj/nuxl-app/releases/download/0.4.0/OpenMS-NuXLApp.zip
 
 # Run app as container entrypoint.
 EXPOSE $PORT
