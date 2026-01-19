@@ -239,7 +239,7 @@ def create_zip_and_get_base64(file_paths):
     
     return b64_zip_content
 
-def download_selected_result_files(to_download: list[str], link_name: str) -> None:
+def download_selected_result_files(to_download: list[str], link_name: str, zip_filename="selected_files") -> None:
     """
     download selected idXML files from current workspace.
 
@@ -256,7 +256,7 @@ def download_selected_result_files(to_download: list[str], link_name: str) -> No
     #creta zip content file
     b64_zip_content = create_zip_and_get_base64(file_paths)
     #create href for download
-    href = f'<a href="data:application/zip;base64,{b64_zip_content}" download="selected_files.zip">{link_name}</a>'
+    href = f'<a href="data:application/zip;base64,{b64_zip_content}" download="{zip_filename}.zip">{link_name}</a>'
     #show on page
     st.markdown(href, unsafe_allow_html=True)
 

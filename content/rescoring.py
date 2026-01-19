@@ -40,7 +40,7 @@ if not any(nuxl_rescore_dir.iterdir()):
     # GitHub release ZIP URL
     zip_url = "https://github.com/Arslan-Siraj/NuXL_rescore_resources/releases/download/0.0.1/nuxl_rescore_resource.zip"
 
-    st.info("Resources missing for rescoring. Downloading first NuXL rescore resources ...")
+    st.info("Resources missing for rescoring. Downloading NuXL rescore resources ...")
 
     # Progress bar
     progress_bar = st.progress(0)
@@ -379,7 +379,7 @@ else:
                 files_to_download.append(idXML_file_1_XLs.name)
 
             st.info(f"Preparing download link for rescoring output files ...",  icon="ℹ️")
-            download_selected_result_files(files_to_download, f":arrow_down: {id_file}_rescoring_out_files")
+            download_selected_result_files(files_to_download, link_name=f":arrow_down: {id_file}_rescoring_out_files", zip_filename=f"{id_file}_rescoring_out_files")
             
             st.success("⚡️ **Rescoring Completed Successfully!** ⚡️")
 
