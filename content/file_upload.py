@@ -53,7 +53,6 @@ with tabs[0]:
         cols = st.columns(3)
         #file uploader submit button
         if cols[1].form_submit_button("Add mzML/raw file to workspace", type="primary"):
-            print(files)
             if not files:
                 st.warning("Upload some files first.")
             else:

@@ -94,7 +94,7 @@ session_idXML_files = [
         for f in Path(st.session_state.workspace, "result-files").iterdir()
         if (
             f.name.endswith(".idXML")
-            and not any(x in f.name for x in ["0.0100", "0.1000", "1.0000","RT_feat", "RT_Int_feat", "updated_feat", "_perc_", "_sse_perc_" ])
+            and not any(x in f.name for x in ["0.0100", "0.1000", "1.0000","RT_feat", "RT_Int_feat", "updated_feat", "_perc", "_perc_", "_sse_perc_" ])
         )
     ]
 
