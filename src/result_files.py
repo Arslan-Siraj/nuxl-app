@@ -487,3 +487,37 @@ def download_folder_library(folder_path: Path | str, link_name: str, zip_name: s
       st.markdown(href, unsafe_allow_html=True)
 
 
+def copy_folder_library_to_results(folder_path: Path | str) -> None:
+    """
+    Create a copy of a folder into the results directory.
+
+    Parameters
+    ----------
+    folder_path : Path or str
+        Path to the folder to be copied to the results directory.
+    """
+    folder_path = Path(folder_path)
+    if not folder_path.is_dir():
+        raise ValueError(f"Provided path is not a directory: {folder_path}")
+
+    # Ensure the results directory exists
+    result_dir: Path = Path(st.session_state.workspace, "result-files")
+
+    # Copy the folder
+    shutil.copytree(folder_path, result_dir)
+
+
+def delete_folder_library(folder_path: Path | str) -> None:
+    """
+    Delete a folder and its contents.
+
+    Parameters
+    ----------
+    folder_path : Path or str
+        Path to the folder to be deleted.
+    """
+    folder_path = Path(folder_path)
+    if folder_path.is_dir():
+        shutil.rmtree(folder_path)  
+
+    

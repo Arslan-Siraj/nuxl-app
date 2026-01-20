@@ -375,9 +375,15 @@ if submit_button:
 
     #--------------- Save log file---------------------
     if success_pipline:
-      st.info(f"Preparing download link for library output files ...",  icon="ℹ️")
+      # copy library output folder to result-files for download
+      copy_folder_library_to_results(output_folder_library)
 
+      # Provide download link
+      st.info(f"Preparing download link for library output files ...",  icon="ℹ️")
       download_folder_library(output_folder_library, f":arrow_down: {library_name_input}_library_out_files", zip_name=f"{library_name_input}_library_out_files.zip")
+
+      # delete the output folder after zipping
+      delete_folder_library(output_folder_library)
       st.success("⚡️ **Library Generation Completed Successfully!** ⚡️")
 
 save_params(params)
