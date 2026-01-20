@@ -440,7 +440,11 @@ with tabs[1]:
             #take all example result files name
             list_result_examples = list_result_example_files()
             #take all session result files
-            session_files = [f.name for f in sorted(result_dir.iterdir())]
+            session_files = [
+                        f.name
+                        for f in sorted(result_dir.iterdir())
+                        if f.is_file() # dont show directories, because we only want files
+                    ]
             #filter out the example result files
             Final_list = [item for item in session_files if item not in list_result_examples]
 

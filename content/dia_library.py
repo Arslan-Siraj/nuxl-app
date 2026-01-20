@@ -318,7 +318,8 @@ if submit_button:
                         "--irt",
                         str(iRT_calibration_model),
                         "--irt-ref",
-                        str(uploaded_path)
+                        str(uploaded_path), 
+                        "-v",                        
                   ]
             
             else:
@@ -341,29 +342,32 @@ if submit_button:
                         *map(str, unknown_pep),
                         "-o",
                         str(output_folder_library / f"{library_name_input}.tsv"),
+                        "-v",
                   ]
 
 
             st.info("Running:\n" + " ".join(args_gen_lib))
 
-            result = subprocess.run(
+            with subprocess.Popen(
                   args_gen_lib,
                   stdout=subprocess.PIPE,
-                  stderr=subprocess.PIPE,
-                  text=True
-            )
+                  stderr=subprocess.STDOUT,  # merge stderr with stdout
+                  text=True,
+                  bufsize=1
+                  ) as proc:
+                        for line in proc.stdout:
+                              log(line)  # append each line to console_output and log_lines
+                        proc.wait()
 
-            if result.returncode != 0:
+            if proc.returncode != 0:
                   st.error("Library generation failed")
-                  st.text(result.stderr)
                   st.stop()
             else:
-                  log(result.stdout + "\n")
-                  log_file = output_folder_library / "library_generation.log"
+                  log_file = output_folder_library / f"{library_name_input}_library_generation.log"
                   with open(log_file, "w") as f:
                         f.write("===== version info =====\n")
-                        f.write(f"OpenMS version: {st.session_state.settings['openms-version']}")
-                        f.write(f"NuXLApp version: {st.session_state.settings['version']}")
+                        f.write(f"OpenMS version: {st.session_state.settings['openms-version']}\n")
+                        f.write(f"NuXLApp version: {st.session_state.settings['version']}\n")
                         f.writelines(log_lines)
                   success_pipline = True
 
@@ -374,5 +378,4 @@ if submit_button:
       download_folder_library(output_folder_library, f":arrow_down: {library_name_input}_library_out_files", zip_name=f"{library_name_input}_library_out_files.zip")
       st.success("⚡️ **Library Generation Completed Successfully!** ⚡️")
 
-## validation
 save_params(params)
