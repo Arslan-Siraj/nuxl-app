@@ -434,7 +434,7 @@ if submit_button:
         st.info(f"Preparing download link for NuXL output identification files ...",  icon="ℹ️")
 
         # then download link for identification file of above criteria 
-        download_selected_result_files(identification_files, f":arrow_down: {protocol_name}_XL_identification_files")
+        download_selected_result_files(identification_files, link_name=f":arrow_down: {protocol_name}_XL_identification_files", zip_filename=f"{protocol_name}_XL_identification_files")
 
         st.success("⚡️ **Analyzing with NuXL Completed Successfully!** ⚡️")
 

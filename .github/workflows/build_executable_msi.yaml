@@ -12,7 +12,7 @@ env:
   # Define unique GUID for UpgradeCode
   APP_UpgradeCode: "c1c7c11f-b063-4100-9854-af555d1b26d1"
   # Define needed TOPP tools need in NuXLApp
-  TOPP_TOOLS: "OpenNuXL FileConverter PercolatorAdapter"
+  TOPP_TOOLS: "OpenNuXL FileConverter PercolatorAdapter TextExporter"
   # App name
   APP_NAME: OpenMS-NuXLApp
   
@@ -198,7 +198,7 @@ jobs:
         cp -r openms-bin/*.dll streamlit_exe/
     
         # Copy share folder
-        #cp -r openms-share/* streamlit_exe/share/
+        cp -r openms-share/* streamlit_exe/share/
         cp -r openms-share/OpenMS/NuXL streamlit_exe/NuXL/
   
         # copy chemistry outside
