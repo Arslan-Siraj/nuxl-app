@@ -1259,7 +1259,7 @@ def main():
 
     # Print summary
     stats = converter.get_stats()
-    print(f"\nConversion complete!")
+    print(f"\nLibrary Generation Summary!")
     print(f"  Input: {stats['xl_entries']} crosslinks, {stats['peptide_entries']} peptides")
     print(f"  Output: {stats['library_rows']} fragment rows")
     print(f"  Unique precursors: {stats.get('unique_precursors', 'N/A')}")

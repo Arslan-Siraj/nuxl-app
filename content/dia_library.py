@@ -210,7 +210,9 @@ if submit_button:
                         args_convert = [
                                           "TextExporter",
                                           "-in", str(idxml_path_in),
-                                          "-out", str(idxml_path_out)
+                                          "-out", str(idxml_path_out),
+                                          "-id:peptides_only",
+                                          "-id:add_hit_metavalues","0"
                                     ]
 
                   #st.info(f"Running: {' '.join(args_convert)}")
@@ -253,7 +255,7 @@ if submit_button:
                                           "-in", str(mzml_path_in)
                                     ]
 
-                  #st.info(f"Running: {' '.join(args_convert)}")
+                  #st.info(f"Running: {' '.join(args_FileInfo)}")
 
                   result_FileInfo = subprocess.run(
                               args_FileInfo,
@@ -346,7 +348,7 @@ if submit_button:
                   ]
 
 
-            st.info("Running:\n" + " ".join(args_gen_lib))
+            #st.info("Running:\n" + " ".join(args_gen_lib))
 
             with subprocess.Popen(
                   args_gen_lib,
