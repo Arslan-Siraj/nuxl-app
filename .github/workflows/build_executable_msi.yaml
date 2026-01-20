@@ -12,7 +12,7 @@ env:
   # Define unique GUID for UpgradeCode
   APP_UpgradeCode: "c1c7c11f-b063-4100-9854-af555d1b26d1"
   # Define needed TOPP tools need in NuXLApp
-  TOPP_TOOLS: "OpenNuXL FileConverter PercolatorAdapter TextExporter"
+  TOPP_TOOLS: "OpenNuXL FileConverter PercolatorAdapter TextExporter FileInfo"
   # App name
   APP_NAME: OpenMS-NuXLApp
   
