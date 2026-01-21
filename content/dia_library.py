@@ -327,7 +327,7 @@ if submit_button:
                         "-i",
                         *map(str, unknown_files),
                         "-o",
-                        str(output_folder_library / f"{library_name_input}.tsv"),
+                        str(output_folder_library / f"{user_library_name}.tsv"),
                         "--irt",
                         str(iRT_calibration_model),
                         "--irt-ref",
@@ -354,7 +354,7 @@ if submit_button:
                         *map(str, unknown_xls),
                         *map(str, unknown_pep),
                         "-o",
-                        str(output_folder_library / f"{library_name_input}.tsv"),
+                        str(output_folder_library / f"{user_library_name}.tsv"),
                         "-v",
                   ]
 
@@ -376,7 +376,7 @@ if submit_button:
                   st.error("Library generation failed")
                   st.stop()
             else:
-                  log_file = output_folder_library / f"{library_name_input}_library_generation.log"
+                  log_file = output_folder_library / f"{user_library_name}_library_generation.log"
                   with open(log_file, "w") as f:
                         f.write("===== version info =====\n")
                         f.write(f"OpenMS version: {st.session_state.settings['openms-version']}\n")
@@ -392,7 +392,7 @@ if submit_button:
 
       # Provide download link
       st.info(f"Preparing download link for library output files ...",  icon="ℹ️")
-      download_folder_library(output_folder_library, f":arrow_down: {library_name_input}_library_out_files", zip_name=f"{library_name_input}_library_out_files.zip")
+      download_folder_library(output_folder_library, f":arrow_down: {user_library_name}_library_out_files", zip_name=f"{library_name_input}_library_out_files.zip")
 
       # delete the output folder after zipping
       delete_folder_library(output_folder_library)

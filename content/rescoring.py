@@ -269,7 +269,7 @@ else:
                                             "-out", str(mgf_path)
                                         ]
 
-                        st.info(f"Running: {' '.join(args_convert)}")
+                        #st.info(f"Running: {' '.join(args_convert)}")
 
                         result = subprocess.run(
                             args_convert,
