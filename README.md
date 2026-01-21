@@ -23,7 +23,7 @@ Rescoring refers to the post-processing of initial identification results to imp
   
 ## Running NuXL locally: Installation as stand-alone tool
 ### Windows
-1. To get started, download and extract the [OpenMS-NuXLApp.zip](https://github.com/Arslan-Siraj/nuxl-app/releases/tag/0.4.0) file from latest successfull action.
+1. To get started, download and extract the [OpenMS-NuXLApp.zip](https://github.com/Arslan-Siraj/nuxl-app/releases/tag/0.5.0) file from latest successfull action.
 2. After installation of `OpenMS-NuXLApp.msi`, The app can then be launched using the corresponding desktop icon.
 3. Use app in your default browser. <br/> 
 

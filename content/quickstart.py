@@ -52,18 +52,16 @@ if Path("OpenMS-NuXLApp.zip").exists():
                         )
 
 st.markdown("""
-      ## Quickstart 
-
-      You can start right away analyzing your data by following the steps below:
+      User can start right away analyzing your data by following the steps below:
 
       ### 1. Create a workspace
-      On the left side of this page you can define a workspace where all your data including uploaded files will be stored. Entering a workspace will switch to an existing one or create a new one if it does not exist yet. In the web app, you can share your results via the unique workspace ID. Be careful with sensitive data, anyone with access to this ID can view your data. 
+      On the left side of this page user can define a workspace where all data including uploaded files will be stored. Entering a workspace will switch to an existing one or create a new one if it does not exist yet. In the web app, user can share their results via the unique workspace ID. Be careful with sensitive data, anyone with access to this ID can view access the data. 
 
       ### 2. 📁 Upload your files
-      Upload `.mzML`. `.raw` and `.fasta` files via the **File Upload** tab. The data will be stored in your workspace. With the web app you can upload only one file at a time.
+      Upload `.mzML`. `.raw` and `.fasta` files via the **File Upload** tab. The data will be stored in the workspace. With the online hosted web app, user can upload only one file at a time.
       Locally there is no limit in files. However, it is recommended to upload large number of files by specifying the path to a directory containing the files.
 
-      Your uploaded files will be shown on the same **File Upload** page in  **mzML files** and **Fasta files** tabs. Also you can remove the files from workspace.
+      Your uploaded files will be shown on the same **File Upload** page in  **mzML files** and **Fasta files** tabs. Also user can remove the files from workspace.
 
       Users can download the example files from **Load example file** tab to current workspace.
 
@@ -71,25 +69,29 @@ st.markdown("""
 
       Select the `.mzML/.raw` and `.fasta` files for analysis, configure user settings including NuXL advanced parameters, and start the analysis using the **Run-analysis** button.
 
-      You can terminate the analysis immediately using the **Terminate/Clear** button and you can see the real-time log of search engine.
+      User can terminate the analysis immediately using the **Terminate/Clear** button and user can see the real-time log of search engine.
       Once the analysis completed successfully, the output table will be displayed on the page, along with downloadable links for crosslink identification files for that particular analysis.
 
       ### 4. ⚙️ Rescoring
-
       Select without FDR-controlled `.idXML` file from output of NuXL search engine. The name of file pattern is `(raw or mzML file_name).idXML`. If the NuxL search engine succesfully run, the file will showup here. After including the features start the analysis using the **Run-rescoring** button.
 
-      You can terminate the rescoring analysis immediately using the **Terminate/Clear** button and you can see the real-time log of rescoring.
+      User can terminate the rescoring analysis immediately using the **Terminate/Clear** button and User can see the real-time log of rescoring.
       Once the analysis completed successfully, the comparison PseudoROC curve at CSM-level FDR will generated, and available for download.
 
-      #### 5. 📊 View your results
-      Here, you can visualize and explore the output of the search engine. All crosslink output files in the workspace are available on the **View Results** tab.
-      After selecting any file, you can view the `CSMs Table`, `PRTs Table`, `PRTs Summary`, `Crosslink efficiency` and `Precursor adducts summary`.
+      ### 5. ⚙️ DIA spectra library generation
+      Select the experiments with (`.mzML`) it will extract the identified protein-NA and peptides from NuXL output at 1% CSM-level FDR, available in `.idXML` files. Optionally, user can do iRT alignment by providing MSFragger `library.tsv`, with `linear` or `piecewise` calibration mod 
+
+      User can start the analysis using the **Generate Library** button. USer can terminate the rescoring analysis immediately using the **Terminate/Clear** button and User can see the real-time log of spectral library generation.
+
+      ### 6. 📊 View your results
+      Here, user can visualize and explore the output of the search engine. All crosslink output files in the workspace are available on the **View Results** tab.
+      After selecting any file, user can view the `CSMs Table`, `PRTs Table`, `PRTs Summary`, `Crosslink efficiency` and `Precursor adducts summary`.
 
       Users can manage their result files available in workspace with `Result files` tab.Also Users can upload previously analyzed results files `.idXML and .tsv` to workspace with `Upload result files` tab.
 
       Note: Every table and plot can be downloaded, as indicated formats in the side-bar under ⚙️ Settings.
 
-      ## How to upload result files (e.g., from external sources/collaborator) for manual inspection and visualization?
+      ### How to upload result files (e.g., from external sources/collaborator) for manual inspection and visualization?
       At **Upload result files** tab, user can  `upload` the results files and can visualize in **View Results** tab.
       In the web app, collaborators can visualize files by sharing a unique workspace ID.
 
