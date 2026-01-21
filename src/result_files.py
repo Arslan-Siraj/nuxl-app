@@ -487,7 +487,11 @@ def download_folder_library(folder_path: Path | str, link_name: str, zip_name: s
       st.markdown(href, unsafe_allow_html=True)
 
 
-def copy_folder_library_to_results(folder_path: Path | str, filename_dont_copy: str) -> None:
+
+def copy_folder_library_to_results(
+    folder_path: Path | str,
+    filename_dont_copy=None,
+) -> None:
     """
     Create a copy of a folder into the results directory.
 
@@ -495,22 +499,34 @@ def copy_folder_library_to_results(folder_path: Path | str, filename_dont_copy: 
     ----------
     folder_path : Path or str
         Path to the folder to be copied to the results directory.
+    filename_dont_copy : Path, UploadedFile, or None
+        Single file to exclude from copying.
     """
+
     folder_path = Path(folder_path)
     if not folder_path.is_dir():
         raise ValueError(f"Provided path is not a directory: {folder_path}")
 
-    # Ensure the results directory exists
-    result_dir: Path = Path(st.session_state.workspace, "result-files")
+    result_dir = Path(st.session_state.workspace, "result-files")
+    result_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy the folder
+    # Resolve excluded filename once
+    excluded_name = (
+        filename_dont_copy.name
+        if filename_dont_copy is not None
+        else None
+    )
+
     for item in folder_path.iterdir():
-        if item.name != filename_dont_copy.name: 
-            dest = result_dir / item.name
-            if item.is_dir():
-                shutil.copytree(item, dest, dirs_exist_ok=True)
-            else:
-                shutil.copy2(item, dest)
+        if excluded_name is not None and item.name == excluded_name:
+            continue
+
+        dest = result_dir / item.name
+        if item.is_dir():
+            shutil.copytree(item, dest, dirs_exist_ok=True)
+        else:
+            shutil.copy2(item, dest)
+
 
 import stat
 def delete_folder_library(folder_path: Path | str) -> None:
