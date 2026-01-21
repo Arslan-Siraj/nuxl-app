@@ -51,7 +51,7 @@ mzML_files_ = [f.name for f in Path(st.session_state.workspace, "mzML-files").it
 with st.form("library_generation_form", clear_on_submit=False):
     # --- Select mzML/raw files ---
     selected_mzML_files = st.multiselect(
-        "Choose mzML/raw file(s)",
+        "Choose mzML file(s)",
         [f for f in mzML_files_ if not (f.endswith(".csv") or f.endswith(".mgf"))],
         help="If file not here, please upload via File Upload and run the NuXL search engine first.",
     )
@@ -103,7 +103,7 @@ if submit_button:
 
     with st.status("Running analysis... Please wait until analysis done 😑"):
       if not selected_mzML_files:
-            st.warning("Please select at least one experiment (mzML/raw file) for generating the library.")
+            st.warning("Please select at least one experiment (mzML file) for generating the library.")
       else:
             if uploaded_file is not None:
                   uploaded_stem = Path(uploaded_file.name).stem
