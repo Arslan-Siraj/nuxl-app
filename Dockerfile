@@ -152,7 +152,7 @@ RUN jq '.online_deployment = true' settings.json > tmp.json && mv tmp.json setti
 # Download latest OpenMS App executable as a ZIP file
 RUN curl -L \
   -o /app/OpenMS-NuXLApp.zip \
-  https://github.com/Arslan-Siraj/nuxl-app/releases/download/0.4.0/OpenMS-NuXLApp.zip
+  https://github.com/Arslan-Siraj/nuxl-app/releases/download/0.5.0/OpenMS-NuXLApp.zip
 
 # Run app as container entrypoint.
 EXPOSE $PORT
