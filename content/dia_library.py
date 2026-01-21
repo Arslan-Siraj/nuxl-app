@@ -244,50 +244,48 @@ if submit_button:
 
             #--------------- File Info---------------------
             log("====> mzML file Info with FileInfo OpenMS <====\n")
-            fileinfo=False
-            if fileinfo:
-                  FileInfo_exec = os.path.join(os.getcwd(), 'FileInfo')
-                  #st.write(selected_mzML_files)
-                  for mzml_file in selected_mzML_files:
-                        # Input file: from result-files folder
-                        mzml_path_in = Path(st.session_state.workspace, "mzML-files", mzml_file)
+            FileInfo_exec = os.path.join(os.getcwd(), 'FileInfo')
+            #st.write(selected_mzML_files)
+            for mzml_file in selected_mzML_files:
+                  # Input file: from result-files folder
+                  mzml_path_in = Path(st.session_state.workspace, "mzML-files", mzml_file)
 
-                        # Append current file being processed
-                        log(f"---> Processing mzml file FileInfo: {mzml_file}\n")
+                  # Append current file being processed
+                  log(f"---> Processing mzml file FileInfo: {mzml_file}\n")
 
-                        if os.name == 'nt':
-                              args_FileInfo = [
-                                                FileInfo_exec,
-                                                "-in", str(mzml_path_in)
-                                          ]
-                        else:
-                              args_FileInfo = [
-                                                "FileInfo",
-                                                "-in", str(mzml_path_in)
-                                          ]
+                  if os.name == 'nt':
+                        args_FileInfo = [
+                                          FileInfo_exec,
+                                          "-in", str(mzml_path_in)
+                                    ]
+                  else:
+                        args_FileInfo = [
+                                          "FileInfo",
+                                          "-in", str(mzml_path_in)
+                                    ]
 
-                        #st.info(f"Running: {' '.join(args_FileInfo)}")
+                  #st.info(f"Running: {' '.join(args_FileInfo)}")
 
-                        result_FileInfo = subprocess.run(
-                                    args_FileInfo,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    text=True
-                              )
+                  result_FileInfo = subprocess.run(
+                              args_FileInfo,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              text=True
+                        )
 
-                        if result_FileInfo.returncode != 0:
-                                    console_output.text("FileInfo failed")
-                                    st.text(result.stderr)
-                                    st.error("FileInfo failed")
-                                    st.stop()
-                        else:
-                              log(f"{result_FileInfo.stdout}\n")
-                  
-                  #-------------------check FileInfo output-----------------
-                  if "ion mobility: <none> .. <none>" in result_FileInfo.stdout:
-                        log("\n====> WARNING: No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation. <====\n")
-                        st.error("No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation.")
-                        st.stop()
+                  if result_FileInfo.returncode != 0:
+                              console_output.text("FileInfo failed")
+                              st.text(result.stderr)
+                              st.error("FileInfo failed")
+                              st.stop()
+                  else:
+                        log(f"{result_FileInfo.stdout}\n")
+            
+            #-------------------check FileInfo output-----------------
+            if "ion mobility: <none> .. <none>" in result_FileInfo.stdout:
+                  log("\n====> WARNING: No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation. <====\n")
+                  st.error("No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation.")
+                  st.stop()
 
             #---------------upload the library file from MSFragger---------------------
             if uploaded_file is not None:

@@ -58,7 +58,7 @@ User can terminate the rescoring analysis immediately using the **Terminate/Clea
 Once the analysis completed successfully, the comparison PseudoROC curve at CSM-level FDR will generated, and available for download.
 
 ### 5. ⚙️ DIA spectra library generation
-Select the experiments with (`.mzML`) it will extract the identified protein-NA and peptides from NuXL output at 1% CSM-level FDR, available in `.idXML` files. Optionally, user can do iRT alignment by providing MSFragger `library.tsv`, with `linear` or `piecewise` calibration mod 
+Select the experiments with (`.mzML`) it will extract the identified protein-NA and peptides from NuXL output at 1% CSM-level FDR, available in `.idXML` files. Optionally, user can do iRT alignment by providing MSFragger `library.tsv`, with `linear` or `piecewise` calibration mode.
 
 User can start the analysis using the **Generate Library** button. USer can terminate the rescoring analysis immediately using the **Terminate/Clear** button and User can see the real-time log of spectral library generation.
 
