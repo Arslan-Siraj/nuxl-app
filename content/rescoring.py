@@ -153,7 +153,7 @@ else:
             st.rerun() 
 
         # Display a status message while running the analysis
-        with st.status("Running analysis... Please wait until analysis done 😑"):
+        with st.status("Running analysis... Please wait until analysis done ðŸ˜‘"):
  
             if Retention_time_features:
                 if protocol == 'RNA_DEB':
@@ -254,7 +254,7 @@ else:
                         st.stop()
 
                     else:
-                        st.info("Converting mzML → MGF")
+                        st.info("Converting mzML â†’ MGF")
                         File_converter_exec = os.path.join(os.getcwd(),'FileConverter')
                         if os.name == 'nt':
                             args_convert = [
@@ -279,11 +279,11 @@ else:
                         )
 
                         if result.returncode != 0:
-                            st.error("mzML → MGF conversion failed")
+                            st.error("mzML â†’ MGF conversion failed")
                             st.text(result.stderr)
                             st.stop()
                         else:
-                            st.success("mzML → MGF conversion completed")
+                            st.success("mzML â†’ MGF conversion completed")
                 
                 args.extend(["-mgf", str(mgf_path)])
 
@@ -295,7 +295,7 @@ else:
             #st.info(message)
             #st.info("check inputs plot: " + str(idXML_file_100_XLs)+' and '+ str(idXML_file_extra_100_XLs)+' '+ str(Path(idXML_file).stem))
             # run subprocess command
-            st.info(f"Rescoring analysis of {selected_id_file}",  icon="ℹ️")
+            st.info(f"Rescoring analysis of {selected_id_file}",  icon="â„¹ï¸")
             run_subprocess(args, variables, result_dict)
         
         args_cmd = " ".join(map(str, args))
@@ -325,7 +325,7 @@ else:
 
         # Check if the subprocess was successful
         if result_dict["success"]:
-            st.info(f"Rescoring analysis of **{log_file_path.name}** log file written in result folder with name {log_file_path.name}", icon="ℹ️")
+            st.info(f"Rescoring analysis of **{log_file_path.name}** log file written in result folder with name {log_file_path.name}", icon="â„¹ï¸")
 
             # Here can add code here to handle the results, e.g., display them to the user
             extensions_to_remove = {
@@ -356,7 +356,7 @@ else:
                             )
                 else:
                     #ploting_pseudoROC()
-                    st.info(f"Generating Pseudo-ROC plot...",  icon="ℹ️")
+                    st.info(f"Generating Pseudo-ROC plot...",  icon="â„¹ï¸")
                     fig, output_pdf = plot_FDR_plot(
                         idXML_id=str(idXML_file_100_XLs),
                         idXML_extra=str(idXML_file_extra_100_XLs),
@@ -378,15 +378,16 @@ else:
             else:
                 files_to_download.append(idXML_file_1_XLs.name)
 
-            st.info(f"Preparing download link for rescoring output files ...",  icon="ℹ️")
-            download_selected_result_files(files_to_download, link_name=f":arrow_down: {id_file}_rescoring_out_files", zip_filename=f"{id_file}_rescoring_out_files")
-            
-            st.success("⚡️ **Rescoring Completed Successfully!** ⚡️")
+            st.info(f"Preparing download link for rescoring output files ...",  icon="â„¹ï¸")
+            #download_selected_result_files(files_to_download, link_name=f":arrow_down: {id_file}_rescoring_out_files", zip_filename=f"{id_file}_rescoring_out_files")
+            download_selected_result_files_new(files_to_download, link_name=f":arrow_down: {id_file}_rescoring_out_files", zip_filename=f"{id_file}_rescoring_out_files")
+
+            st.success("âš¡ï¸ **Rescoring Completed Successfully!** âš¡ï¸")
 
         else:
             # Display error message
             st.error(
-                    f"⚠️ **Rescoring Failed**\n\n"
+                    f"âš ï¸ **Rescoring Failed**\n\n"
                     f"Please look at the log.\n"
                     )
             

@@ -450,42 +450,32 @@ def read_protein_table(input_file):
     return section_dfs
 
 #########dia page ##########
-def download_folder_library(folder_path: Path | str, link_name: str, zip_name: str = "selected_files.zip") -> None:
-      """
-      Create a Streamlit download link for a folder zipped into a single file.
+def download_folder_library(
+    folder_path: Path | str,
+    link_name: str,
+    zip_name: str = "selected_files.zip",
+) -> None:
 
-      Parameters
-      ----------
-      folder_path : Path or str
-            Path to the folder to be zipped and downloaded.
-      link_name : str
-            Text displayed for the download link.
-      zip_name : str, optional
-            Name of the downloaded ZIP file.
-      """
+    folder_path = Path(folder_path)
+    if not folder_path.is_dir():
+        raise ValueError(f"Provided path is not a directory: {folder_path}")
 
-      folder_path = Path(folder_path)
-      if not folder_path.is_dir():
-            raise ValueError(f"Provided path is not a directory: {folder_path}")
+    # Create an in-memory ZIP
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_path in folder_path.rglob("*"):
+            if file_path.is_file():
+                zipf.write(file_path, arcname=file_path.relative_to(folder_path))
 
-      # Create an in-memory ZIP file
-      buffer = io.BytesIO()
-      with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for file_path in folder_path.rglob("*"):
-                  if file_path.is_file():
-                        # Keep relative path in ZIP
-                        zipf.write(file_path, arcname=file_path.relative_to(folder_path))
+    buffer.seek(0)
 
-      buffer.seek(0)
-      b64_zip_content = base64.b64encode(buffer.read()).decode("utf-8")
-
-      # Generate HTML link for Streamlit
-      href = (
-            f'<a href="data:application/zip;base64,{b64_zip_content}" '
-            f'download="{zip_name}">{link_name}</a>'
-      )
-      st.markdown(href, unsafe_allow_html=True)
-
+    # Streamlit-safe download button
+    st.download_button(
+        label=link_name,
+        data=buffer,
+        file_name=zip_name,
+        mime="application/zip",
+    )
 
 
 def copy_folder_library_to_results(
@@ -552,3 +542,29 @@ def delete_folder_library(folder_path: Path | str) -> None:
     shutil.rmtree(folder_path, onerror=_on_rm_error)
 
     
+def download_selected_result_files_new(
+    to_download: list[str],
+    link_name: str,
+    zip_filename: str = "selected_files",
+) -> None:
+
+    result_dir = Path(st.session_state.workspace, "result-files")
+    file_paths = [result_dir / f for f in to_download if (result_dir / f).exists()]
+
+    if not file_paths:
+        st.warning("No files available for download.")
+        return
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_path in file_paths:
+            zipf.write(file_path, arcname=file_path.name)
+
+    buffer.seek(0)
+
+    st.download_button(
+        label=link_name,
+        data=buffer,
+        file_name=f"{zip_filename}.zip",
+        mime="application/zip",
+    )
