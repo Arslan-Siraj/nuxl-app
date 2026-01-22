@@ -24,7 +24,7 @@ if 'controllo' not in st.session_state or params["controllo"] == False:
 ### main content of page
 
 # title of page
-st.title("âš™ï¸ Run Analysis")
+st.title("⚙️ Run Analysis")
 
 ######################## Take NuXL configurations ini read #################################
 # Define the sections you want to extract
@@ -285,7 +285,7 @@ if submit_button:
         st.rerun() 
 
     # with st.spinner("Running analysis... Please wait until analysis done ðŸ˜‘"): #without status/ just spinner button
-    with st.status("Running analysis... Please wait until analysis done ðŸ˜‘"):
+    with st.status("Running analysis... Please wait until analysis done 😑"):
        
         # create same output file path name as input file path
         mzML_file_name = os.path.basename(mzML_file_path)
@@ -293,7 +293,7 @@ if submit_button:
         result_path = os.path.join(result_dir, protocol_name + ".idXML")
 
         if mzML_file_path.endswith(".raw.mzML"):
-            st.warning(f"(.raw.mzML) not supported, please select (.raw) or (.mzML) format",  icon="â„¹ï¸")
+            st.warning(f"(.raw.mzML) not supported, please select (.raw) or (.mzML) format",  icon="ℹ️")
         
         else:
             # If session state is local
@@ -348,7 +348,7 @@ if submit_button:
             # want to see the command values and argues
             #message = f"Running '{' '.join(args)}'"
             #st.info(message)
-            st.info(f"Analyzing {mzML_file_name}",  icon="â„¹ï¸")
+            st.info(f"Analyzing {mzML_file_name}",  icon="ℹ️")
 
             # run subprocess command
             run_subprocess(args, variables, result_dict)
@@ -400,7 +400,7 @@ if submit_button:
     # if run_subprocess success (no need if not success because error will show/display in run_subprocess command)
     if result_dict["success"]:
         #st.text_area("Analysis Log", value=result_dict["log"], height=300)
-        st.info(f"NuXL analysis of **{mzML_file_name}** log file written in result folder with name {log_file_path.name}", icon="â„¹ï¸")
+        st.info(f"NuXL analysis of **{mzML_file_name}** log file written in result folder with name {log_file_path.name}", icon="ℹ️")
         # add .mzML.ambigious_masses.csv in result directory 
         add_this_result_file(f"{protocol_name}.mzML.ambigious_masses.csv", Path(st.session_state.workspace, "mzML-files"))
         
@@ -431,17 +431,17 @@ if submit_button:
         # add log file to download zip
         identification_files.append(log_file_path.name)
 
-        st.info(f"Preparing download link for NuXL output identification files ...",  icon="â„¹ï¸")
+        st.info(f"Preparing download link for NuXL output identification files ...",  icon="ℹ️")
 
         # then download link for identification file of above criteria 
         download_selected_result_files_new(identification_files, link_name=f":arrow_down: {protocol_name}_XL_identification_files", zip_filename=f"{protocol_name}_XL_identification_files")
 
-        st.success("âš¡ï¸ **Analyzing with NuXL Completed Successfully!** âš¡ï¸")
+        st.success("⚡️**Analyzing with NuXL Completed Successfully!** âš¡ï¸")
 
     else:
         # Display error message
         st.error(
-                f"âš ï¸ **Analysis Failed**\n\n"
+                f"⚠️ **Analysis Failed**\n\n"
                 f"This might be due to incorrect or incompatible search parameters.\n"
                 f"Please refer at the log file '{protocol_name}_log_{time_stamp}.txt'"
                 )

@@ -18,7 +18,7 @@ if 'controllo' not in st.session_state or params["controllo"] == False:
     # Apply captcha by calling the captcha_control function
     captcha_control()
 
-st.title("Rescoring with Data-Driven Features from Machine Learning Models", 
+st.title("⚙️ Rescoring with Data-Driven Features from Machine Learning Models", 
          help="Rescoring refers to the post-processing of initial identification results "
         "to improve discrimination between correct and incorrect matches by "
         "incorporating additional evidence, such as predicted retention time or "
@@ -153,7 +153,7 @@ else:
             st.rerun() 
 
         # Display a status message while running the analysis
-        with st.status("Running analysis... Please wait until analysis done ðŸ˜‘"):
+        with st.status("Running analysis... Please wait until analysis done 😑"):
  
             if Retention_time_features:
                 if protocol == 'RNA_DEB':
@@ -295,7 +295,7 @@ else:
             #st.info(message)
             #st.info("check inputs plot: " + str(idXML_file_100_XLs)+' and '+ str(idXML_file_extra_100_XLs)+' '+ str(Path(idXML_file).stem))
             # run subprocess command
-            st.info(f"Rescoring analysis of {selected_id_file}",  icon="â„¹ï¸")
+            st.info(f"Rescoring analysis of {selected_id_file}",  icon="ℹ️")
             run_subprocess(args, variables, result_dict)
         
         args_cmd = " ".join(map(str, args))
@@ -325,7 +325,7 @@ else:
 
         # Check if the subprocess was successful
         if result_dict["success"]:
-            st.info(f"Rescoring analysis of **{log_file_path.name}** log file written in result folder with name {log_file_path.name}", icon="â„¹ï¸")
+            st.info(f"Rescoring analysis of **{log_file_path.name}** log file written in result folder with name {log_file_path.name}", icon="ℹ️")
 
             # Here can add code here to handle the results, e.g., display them to the user
             extensions_to_remove = {
@@ -356,7 +356,7 @@ else:
                             )
                 else:
                     #ploting_pseudoROC()
-                    st.info(f"Generating Pseudo-ROC plot...",  icon="â„¹ï¸")
+                    st.info(f"Generating Pseudo-ROC plot...",  icon="ℹ️")
                     fig, output_pdf = plot_FDR_plot(
                         idXML_id=str(idXML_file_100_XLs),
                         idXML_extra=str(idXML_file_extra_100_XLs),
@@ -378,16 +378,16 @@ else:
             else:
                 files_to_download.append(idXML_file_1_XLs.name)
 
-            st.info(f"Preparing download link for rescoring output files ...",  icon="â„¹ï¸")
+            st.info(f"Preparing download link for rescoring output files ...",  icon="ℹ️")
             #download_selected_result_files(files_to_download, link_name=f":arrow_down: {id_file}_rescoring_out_files", zip_filename=f"{id_file}_rescoring_out_files")
             download_selected_result_files_new(files_to_download, link_name=f":arrow_down: {id_file}_rescoring_out_files", zip_filename=f"{id_file}_rescoring_out_files")
 
-            st.success("âš¡ï¸ **Rescoring Completed Successfully!** âš¡ï¸")
+            st.success("⚡️**Rescoring Completed Successfully!** âš¡ï¸")
 
         else:
             # Display error message
             st.error(
-                    f"âš ï¸ **Rescoring Failed**\n\n"
+                    f"⚠️ **Rescoring Failed**\n\n"
                     f"Please look at the log.\n"
                     )
             

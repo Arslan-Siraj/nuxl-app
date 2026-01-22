@@ -16,7 +16,7 @@ if 'controllo' not in st.session_state or params["controllo"] == False:
     # Apply captcha by calling the captcha_control function
     captcha_control()
 
-st.title("DIA library generation", 
+st.title("⚙️ Spectral library generation", 
          help="Generate spectral libraries from identification results for DIA analysis. Used OpenNuXL identification files. ref: https://github.com/timosachsenberg/NuXLDIA"
         )
 
