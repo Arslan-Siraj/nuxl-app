@@ -436,7 +436,7 @@ if submit_button:
         # then download link for identification file of above criteria 
         download_selected_result_files_new(identification_files, link_name=f":arrow_down: {protocol_name}_XL_identification_files", zip_filename=f"{protocol_name}_XL_identification_files")
 
-        st.success("⚡️**Analyzing with NuXL Completed Successfully!** âš¡ï¸")
+        st.success("⚡️**Analyzing with NuXL Completed Successfully!** ⚡️")
 
     else:
         # Display error message

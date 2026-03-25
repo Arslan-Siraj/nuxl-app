@@ -382,7 +382,7 @@ else:
             #download_selected_result_files(files_to_download, link_name=f":arrow_down: {id_file}_rescoring_out_files", zip_filename=f"{id_file}_rescoring_out_files")
             download_selected_result_files_new(files_to_download, link_name=f":arrow_down: {id_file}_rescoring_out_files", zip_filename=f"{id_file}_rescoring_out_files")
 
-            st.success("⚡️**Rescoring Completed Successfully!** âš¡ï¸")
+            st.success("⚡️**Rescoring Completed Successfully!** ⚡️")
 
         else:
             # Display error message

@@ -72,7 +72,7 @@ with st.form("library_generation_form", clear_on_submit=False):
       "iRT calibration model",
       options=["linear", "piecewise"],
       index=0,
-      help="Select the functional form used for iRT calibration."
+      help="Select the functional form used for iRT calibration. If no file from MSFragger is available, it will be skipped automatically."
       )    
     #run_FileInfo = st.checkbox("Run mzML FileInfo", value = True, help="If checked, FileInfo will be run on the selected mzML files to provide additional information in log.")
 
@@ -282,10 +282,10 @@ if submit_button:
                         log(f"{result_FileInfo.stdout}\n")
             
             #-------------------check FileInfo output-----------------
-            if "ion mobility: <none> .. <none>" in result_FileInfo.stdout:
-                  log("\n====> WARNING: No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation. <====\n")
-                  st.error("No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation.")
-                  st.stop()
+            #if "ion mobility: <none> .. <none>" in result_FileInfo.stdout:
+            #      log("\n====> WARNING: No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation. <====\n")
+            #      st.error("No ion mobility information found in mzML files. Please ensure your data contains ion mobility for library generation.")
+            #      st.stop()
 
             #---------------upload the library file from MSFragger---------------------
             if uploaded_file is not None:
