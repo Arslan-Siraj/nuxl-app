@@ -1,10 +1,9 @@
 name: Build OpenMS package
 on:
   workflow_dispatch:
-  
+
 env:
-  OPENMS_VERSION: 3.5.0 
-  # Define needed TOPP tools here
+  OPENMS_VERSION: 3.5.0
   TOPP_TOOLS: "OpenNuXL"
 
 jobs:
@@ -17,17 +16,29 @@ jobs:
       with:
         repository: OpenMS/OpenMS
         ref: develop
-        path: 'OpenMS'
+        path: OpenMS
 
     - name: Install Qt (Windows)
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.8.3'    ## Note this version is build with win64_msvc2022_64 and should always match what we use
+        version: '6.8.3'
         arch: 'win64_msvc2022_64'
         cache: 'false'
         archives: 'qtsvg qtimageformats qtbase'
 
-    # https://github.com/marketplace/actions/visual-studio-shell
+    - name: Locate Qt runtime and add to PATH
+      shell: pwsh
+      run: |
+        $qtCore = Get-ChildItem -Path "$env:RUNNER_WORKSPACE", "$env:RUNNER_TEMP", "C:\Qt" `
+          -Filter Qt6Core.dll -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $qtCore) {
+          throw "Qt6Core.dll not found after install-qt-action"
+        }
+        $qtBin = $qtCore.Directory.FullName
+        "QT_BIN_DIR=$qtBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        $qtBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        Write-Host "Using Qt bin: $qtBin"
+
     - name: Set up Visual Studio shell
       uses: egor-tensin/vs-shell@v2
       with:
@@ -38,10 +49,8 @@ jobs:
       run: |
         choco install ccache ninja -y --no-progress
         choco install cmake --version=3.31.1 -y --no-progress --force
-        ## GH CLI "SHOULD BE" installed. Sometimes I had to manually install nonetheless. Super weird.
-        # https://github.com/actions/runner-images/blob/main/images/win/scripts/Installers/Install-GitHub-CLI.ps1
         echo "C:/Program Files (x86)/GitHub CLI" >> $GITHUB_PATH
-        
+
     - name: Extract branch/PR infos
       shell: bash
       run: |
@@ -64,11 +73,10 @@ jobs:
       if: steps.cache-contrib-win.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
       run: |
         cd OpenMS/contrib
-        # Download the file using the URL fetched from GitHub
         gh release download -R OpenMS/contrib --pattern 'contrib_build-Windows.tar.gz'
-        # Extract the archive
         7z x -so contrib_build-Windows.tar.gz | 7z x -si -ttar
         rm contrib_build-Windows.tar.gz
         ls
@@ -76,7 +84,6 @@ jobs:
     - name: Add contrib to PATH
       shell: bash
       run: |
-        # Add contrib library path for runtime DLL resolution
         echo "${{ github.workspace }}/OpenMS/contrib/lib" >> $GITHUB_PATH
 
     - name: Setup ccache cache
@@ -84,72 +91,76 @@ jobs:
       with:
         path: .ccache
         key: ${{ runner.os }}-ccache-${{ env.RUN_NAME }}-${{ github.run_number }}
-        # Restoring: From current branch, otherwise from base branch, otherwise from any branch.
         restore-keys: |
           ${{ runner.os }}-ccache-${{ env.RUN_NAME }}
           ${{ runner.os }}-ccache-${{ env.BASE_REF }}
           ${{ runner.os }}-ccache-
-          
+
     - name: Add THIRDPARTY
       shell: bash
       run: |
-          # initialize THIRDPARTY
-          cd OpenMS
-          git submodule update --init THIRDPARTY
-          cd ..
-          # add third-party binaries to PATH
-          # use flat THIRDPARTY structure
-          mkdir -p _thirdparty
-          cp -R OpenMS/THIRDPARTY/Windows/x86_64/* _thirdparty/
-          cp -R OpenMS/THIRDPARTY/All/* _thirdparty/
-          # add third-party binaries to PATH
-          for thirdpartytool in ${{ github.workspace }}/_thirdparty/*
-          do
-            echo $thirdpartytool >> $GITHUB_PATH
-          done
-          
+        cd OpenMS
+        git submodule update --init THIRDPARTY
+        cd ..
+        mkdir -p _thirdparty
+        cp -R OpenMS/THIRDPARTY/Windows/x86_64/* _thirdparty/
+        cp -R OpenMS/THIRDPARTY/All/* _thirdparty/
+        for thirdpartytool in ${{ github.workspace }}/_thirdparty/*
+        do
+          echo $thirdpartytool >> $GITHUB_PATH
+        done
+
     - name: Build Windows
       shell: bash
       run: |
-          mkdir $GITHUB_WORKSPACE/OpenMS/bld/
-          bash OpenMS/tools/ci/capture-env.sh -v $GITHUB_WORKSPACE/OpenMS/bld/CMakeCache.txt
-          ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cibuild.cmake
+        mkdir $GITHUB_WORKSPACE/OpenMS/bld/
+        bash OpenMS/tools/ci/capture-env.sh -v $GITHUB_WORKSPACE/OpenMS/bld/CMakeCache.txt
+        ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cibuild.cmake
       env:
-          OPENMS_CONTRIB_LIBS: "${{ github.workspace }}/OpenMS/contrib"
-          CI_PROVIDER: "GitHub-Actions"
-          CMAKE_GENERATOR: "Ninja"
-          SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
-          BUILD_NAME: "${{ env.RUN_NAME }}-Win64-class-topp-${{ github.run_number }}"
-          ENABLE_STYLE_TESTING: "OFF"
-          ENABLE_TOPP_TESTING: "ON"
-          ENABLE_CLASS_TESTING: "ON"
-          WITH_GUI: "OFF"
-          WITH_PARQUET: "OFF"
-          ADDRESS_SANITIZER: "Off"
-          BUILD_TYPE: "Release"
-          OPENMP: "Off"
-          USE_STATIC_BOOST: "On"
-          #  BUILD_FLAGS: "-p:CL_MPCount=2" # For VS Generator and MSBuild
-          BUILD_FLAGS: "-j2" # Ninja will otherwise use all cores (doesn't go well in GHA)
-          CMAKE_CCACHE_EXE: "ccache"
-          CCACHE_BASEDIR: ${{ github.workspace }}
-          CCACHE_DIR: ${{ github.workspace }}/.ccache
-          CCACHE_COMPRESS: true
-          CCACHE_COMPRESSLEVEL: 12
-          CCACHE_MAXSIZE: 400M
+        OPENMS_CONTRIB_LIBS: "${{ github.workspace }}/OpenMS/contrib"
+        CI_PROVIDER: "GitHub-Actions"
+        CMAKE_GENERATOR: "Ninja"
+        SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
+        BUILD_NAME: "${{ env.RUN_NAME }}-Win64-class-topp-${{ github.run_number }}"
+        ENABLE_STYLE_TESTING: "OFF"
+        ENABLE_TOPP_TESTING: "ON"
+        ENABLE_CLASS_TESTING: "ON"
+        WITH_GUI: "OFF"
+        WITH_PARQUET: "OFF"
+        ADDRESS_SANITIZER: "Off"
+        BUILD_TYPE: "Release"
+        OPENMP: "Off"
+        USE_STATIC_BOOST: "On"
+        BUILD_FLAGS: "-j2"
+        CMAKE_CCACHE_EXE: "ccache"
+        CCACHE_BASEDIR: ${{ github.workspace }}
+        CCACHE_DIR: ${{ github.workspace }}/.ccache
+        CCACHE_COMPRESS: true
+        CCACHE_COMPRESSLEVEL: 12
+        CCACHE_MAXSIZE: 400M
+
+    - name: Verify runtime DLL visibility before packaging
+      shell: pwsh
+      run: |
+        Write-Host "QT_BIN_DIR=$env:QT_BIN_DIR"
+        if (-not (Test-Path (Join-Path $env:QT_BIN_DIR "Qt6Core.dll"))) {
+          throw "Qt6Core.dll is not reachable in QT_BIN_DIR"
+        }
+        Get-Command Qt6Core.dll -ErrorAction SilentlyContinue | Format-List *
 
     - name: Package
       shell: bash
       run: |
-          ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cipackage.cmake
+        ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cipackage.cmake
       env:
-          SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
-          PACKAGE_TYPE: zip
-          SEARCH_ENGINES_DIRECTORY: "${{ github.workspace }}/_thirdparty"
-          CI_PROVIDER: "GitHub-Actions"
-          CPACK_PACKAGE_FILE_NAME: "openms-package"
-          BUILD_NAME: "${{ env.RUN_NAME }}-Win64-class-topp-${{ github.run_number }}"
-          
+        SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
+        PACKAGE_TYPE: zip
+        SEARCH_ENGINES_DIRECTORY: "${{ github.workspace }}/_thirdparty"
+        CI_PROVIDER: "GitHub-Actions"
+        CPACK_PACKAGE_FILE_NAME: "openms-package"
+        BUILD_NAME: "${{ env.RUN_NAME }}-Win64-class-topp-${{ github.run_number }}"
+        PATH: "${{ env.QT_BIN_DIR }};${{ github.workspace }}\\OpenMS\\contrib\\lib;${{ env.PATH }}"
+
     - name: Upload package as artifact
       uses: actions/upload-artifact@v4
       with:
@@ -157,4 +168,3 @@ jobs:
         path: |
           ${{ github.workspace }}/OpenMS/bld/*.zip
           ${{ github.workspace }}/OpenMS/bld/_CPack_Packages/**/*
-          
