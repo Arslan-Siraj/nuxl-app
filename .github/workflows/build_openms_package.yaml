@@ -138,12 +138,23 @@ jobs:
           CCACHE_COMPRESSLEVEL: 12
           CCACHE_MAXSIZE: 400M
 
+    - name: Package
+      shell: bash
+      run: |
+          ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cipackage.cmake
+      env:
+          SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
+          PACKAGE_TYPE: zip
+          SEARCH_ENGINES_DIRECTORY: "${{ github.workspace }}/_thirdparty"
+          CI_PROVIDER: "GitHub-Actions"
+          CPACK_PACKAGE_FILE_NAME: "openms-package"
+          BUILD_NAME: "${{ env.RUN_NAME }}-Win64-class-topp-${{ github.run_number }}"
+          
     - name: Upload package as artifact
       uses: actions/upload-artifact@v4
       with:
         name: openms-package
         path: |
-          ${{ github.workspace }}/OpenMS/bld/bin/*
-          ${{ github.workspace }}/_thirdparty/*
-          
+          ${{ github.workspace }}/OpenMS/bld/*.zip
+          ${{ github.workspace }}/OpenMS/bld/_CPack_Packages/**/*
           
