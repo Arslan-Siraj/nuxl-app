@@ -8,120 +8,123 @@
 # prune unused images/etc. to free disc space (e.g. might be needed on gitpod). Use with care.: docker system prune --all --force
 
 # This Dockerfile builds OpenMS on NuXL branch, the TOPP tools, pyOpenMS and thidparty tools.
-
 FROM ubuntu:22.04 AS setup-build-system
+
 ARG OPENMS_REPO=https://github.com/OpenMS/OpenMS.git
-ARG OPENMS_BRANCH=release/3.5.0
+ARG OPENMS_BRANCH=develop
 ARG PORT=8501
-# GitHub token to download latest OpenMS executable for Windows from Github action artifact.
-ARG GITHUB_TOKEN
-ENV GH_TOKEN=${GITHUB_TOKEN}
-# Streamlit app Gihub user name (to download artifact from).
-ARG GITHUB_USER=OpenMS
-# Streamlit app Gihub repository name (to download artifact from).
-ARG GITHUB_REPO=nuxl-app
 
-USER root
+ENV OPENMS_DIR=/root/openms-development
+ENV PORT=${PORT}
 
-# Install required Ubuntu packages.
-RUN apt-get -y update
-RUN apt-get install -y --no-install-recommends --no-install-suggests g++ autoconf automake patch libtool make git gpg wget ca-certificates curl jq libgtk2.0-dev openjdk-8-jdk cron
-RUN update-ca-certificates
-RUN apt-get install -y --no-install-recommends --no-install-suggests libsvm-dev libeigen3-dev coinor-libcbc-dev libglpk-dev libzip-dev zlib1g-dev libxerces-c-dev libbz2-dev libomp-dev libhdf5-dev
-RUN apt-get install -y --no-install-recommends --no-install-suggests libboost-date-time1.74-dev \
-                                                                     libboost-iostreams1.74-dev \
-                                                                     libboost-regex1.74-dev \
-                                                                     libboost-math1.74-dev \
-                                                                     libboost-random1.74-dev
-RUN apt-get install -y --no-install-recommends --no-install-suggests qt6-base-dev libqt6svg6-dev libqt6opengl6-dev libqt6openglwidgets6 libgl-dev
+FROM setup-build-system AS compile-openms
 
-# Install Github CLI
-RUN (type -p wget >/dev/null || (apt-get update && apt-get install wget -y)) \
-	&& mkdir -p -m 755 /etc/apt/keyrings \
-	&& wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-	&& chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-	&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-	&& apt-get update \
-	&& apt-get install gh -y
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    autoconf \
+    automake \
+    libtool \
+    pkg-config \
+    libssl-dev \
+    git \
+    build-essential \
+    wget \
+    curl \
+    python3 \
+    python3-pip \
+    ca-certificates \
+    gnupg \
+    cron \
+    jq \
+    default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
 
-# Download and install miniforge.
+RUN apt-get update && apt-get install -y --no-install-recommends --no-install-suggests \
+    qt6-base-dev \
+    libqt6svg6-dev \
+    libqt6opengl6-dev \
+    libqt6openglwidgets6 \
+    libgl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null \
+    | gpg --dearmor - \
+    | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null \
+    && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main" \
+    > /etc/apt/sources.list.d/kitware.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends cmake kitware-archive-keyring \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p ${OPENMS_DIR} \
+    && cd ${OPENMS_DIR} \
+    && git clone --branch ${OPENMS_BRANCH} --recurse-submodules ${OPENMS_REPO} OpenMS
+
+RUN mkdir -p ${OPENMS_DIR}/contrib_build \
+    && cd ${OPENMS_DIR}/contrib_build \
+    && cmake -DBUILD_TYPE=ALL ${OPENMS_DIR}/OpenMS/contrib \
+    && make -j"$(nproc || echo 2)"
+
+ENV PATH="${OPENMS_DIR}/contrib_build/bin:${PATH}"
+ENV LD_LIBRARY_PATH="${OPENMS_DIR}/contrib_build/lib:${LD_LIBRARY_PATH}"
+
+RUN mkdir -p ${OPENMS_DIR}/openms_build \
+    && cd ${OPENMS_DIR}/openms_build \
+    && cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DHAS_XSERVER=OFF \
+        -DPYOPENMS=OFF \
+        -DGIT_TRACKING=OFF \
+        -DENABLE_UPDATE_CHECK=OFF \
+        -DBoost_USE_STATIC_LIBS=OFF \
+        -DOPENMS_CONTRIB_LIBS=${OPENMS_DIR}/contrib_build \
+        ${OPENMS_DIR}/OpenMS \
+    && make -j"$(nproc || echo 2)"
+
+WORKDIR ${OPENMS_DIR}/OpenMS
+RUN mkdir -p /thirdparty && \
+    git submodule update --init THIRDPARTY && \
+    cp -r THIRDPARTY/All/* /thirdparty 2>/dev/null || true && \
+    cp -r THIRDPARTY/Linux/x86_64/* /thirdparty 2>/dev/null || true && \
+    chmod -R +x /thirdparty || true
+
+ENV PATH="/thirdparty/LuciPHOr2:/thirdparty/MSGFPlus:/thirdparty/Sirius:/thirdparty/ThermoRawFileParser:/thirdparty/Comet:/thirdparty/Fido:/thirdparty/MaRaCluster:/thirdparty/MyriMatch:/thirdparty/OMSSA:/thirdparty/Percolator:/thirdparty/SpectraST:/thirdparty/XTandem:/thirdparty/crux:${PATH}"
+
 ENV PATH="/root/miniforge3/bin:${PATH}"
-RUN wget -q \
-    https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh \
+RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh \
     && bash Miniforge3-Linux-x86_64.sh -b \
     && rm -f Miniforge3-Linux-x86_64.sh
-RUN mamba --version
 
-COPY environment.yml ./environment.yml
-RUN mamba env create -f environment.yml
+COPY environment.yml /tmp/environment.yml
+RUN /root/miniforge3/bin/mamba env create -f /tmp/environment.yml
 RUN echo "mamba activate streamlit-env" >> ~/.bashrc
 SHELL ["/bin/bash", "--rcfile", "~/.bashrc"]
 SHELL ["mamba", "run", "-n", "streamlit-env", "/bin/bash", "-c"]
 
-# Install up-to-date cmake via mamba and packages for pyOpenMS build.
-RUN mamba install cmake
-RUN pip install --upgrade pip && python -m pip install -U setuptools nose cython autowrap pandas numpy pytest
+RUN python -m pip install --upgrade pip && \
+    python -m pip install "setuptools<82" nose cython autowrap pandas numpy pytest && \
+    python -m pip install nuxl-rescore==0.2.0 && \
+    python -c "import pkg_resources; import nuxl_rescore; print('imports ok')"
 
-# Clone OpenMS branch and the associcated contrib+thirdparties+pyOpenMS-doc submodules.
-RUN git clone --recursive --depth=1 -b ${OPENMS_BRANCH} --single-branch ${OPENMS_REPO} && cd /OpenMS
-
-# Pull Linux compatible third-party dependencies and store them in directory thirdparty.
-WORKDIR /OpenMS
-RUN mkdir /thirdparty && \
-    git submodule update --init THIRDPARTY && \
-    cp -r THIRDPARTY/All/* /thirdparty && \
-    cp -r THIRDPARTY/Linux/x86_64/* /thirdparty && \
-    chmod -R +x /thirdparty
-ENV PATH="/thirdparty/LuciPHOr2:/thirdparty/MSGFPlus:/thirdparty/Sirius:/thirdparty/ThermoRawFileParser:/thirdparty/Comet:/thirdparty/Fido:/thirdparty/MaRaCluster:/thirdparty/MyriMatch:/thirdparty/OMSSA:/thirdparty/Percolator:/thirdparty/SpectraST:/thirdparty/XTandem:/thirdparty/crux:${PATH}"
-
-# Build OpenMS and pyOpenMS.
-FROM setup-build-system AS compile-openms
-WORKDIR /
-
-# Set up build directory.
-RUN mkdir /openms-build
-WORKDIR /openms-build
-
-# Configure.
-RUN /bin/bash -c "cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_PREFIX_PATH='/OpenMS/contrib-build/;/usr/;/usr/local' -DHAS_XSERVER=OFF -DBOOST_USE_STATIC=OFF -DPYOPENMS=ON ../OpenMS -DPY_MEMLEAK_DISABLE=On"
-
-# Build TOPP tools and clean up.
-RUN make -j4 TOPP
-RUN rm -rf src doc CMakeFiles
-
-# Install other dependencies (excluding pyopenms)
-#COPY requirements.txt ./requirements.txt 
-#RUN grep -Ev '^pyopenms([=<>!~].*)?$' requirements.txt > requirements_cleaned.txt && mv requirements_cleaned.txt requirements.txt
-#RUN pip install -r requirements.txt
-
-RUN pip install nuxl-rescore==0.2.0
+SHELL ["/bin/bash", "-c"]
 
 WORKDIR /
-RUN mkdir openms
+RUN mkdir -p /openms
 
-# Copy TOPP tools bin directory, add to PATH.
-RUN cp -r openms-build/bin /openms/bin
-ENV PATH="/openms/bin/:${PATH}"
+RUN cp -r ${OPENMS_DIR}/openms_build/bin /openms/bin
+ENV PATH="/openms/bin:${PATH}"
 
-# Copy TOPP tools bin directory, add to PATH.
-RUN cp -r openms-build/lib /openms/lib
-ENV LD_LIBRARY_PATH="/openms/lib/:${LD_LIBRARY_PATH}"
+RUN cp -r ${OPENMS_DIR}/openms_build/lib /openms/lib
+ENV LD_LIBRARY_PATH="/openms/lib:${LD_LIBRARY_PATH}"
 
-# Copy share folder, add to PATH, remove source directory.
-RUN cp -r OpenMS/share/OpenMS /openms/share
-RUN rm -rf OpenMS
+RUN cp -r ${OPENMS_DIR}/OpenMS/share/OpenMS /openms/share
 ENV OPENMS_DATA_PATH="/openms/share/"
 
-# Remove build directory.
-RUN rm -rf openms-build
-
-# Prepare and run streamlit app.
 FROM compile-openms AS run-app
-# Create workdir and copy over all streamlit related files/folders.
+ARG PORT=8501
+ENV PORT=${PORT}
 
-# note: specifying folder with slash as suffix and repeating the folder name seems important to preserve directory structure
 WORKDIR /app
-COPY app.py /app/app.py 
+COPY app.py /app/app.py
 COPY src/ /app/src
 COPY assets/ /app/assets
 COPY example-data/ /app/example-data
@@ -132,28 +135,24 @@ COPY settings.json /app/settings.json
 COPY hooks/ /app/hooks
 COPY gdpr_consent/ /app/gdpr_consent
 
-# add cron job to the crontab
 RUN echo "0 3 * * * /root/miniforge3/envs/streamlit-env/bin/python /app/clean-up-workspaces.py >> /app/clean-up-workspaces.log 2>&1" | crontab -
 
-# create entrypoint script to start cron service and launch streamlit app
 RUN echo "#!/bin/bash" > /app/entrypoint.sh && \
+    echo "set -e" >> /app/entrypoint.sh && \
     echo "source /root/miniforge3/bin/activate streamlit-env" >> /app/entrypoint.sh && \
     echo "service cron start" >> /app/entrypoint.sh && \
-    echo "streamlit run app.py" >> /app/entrypoint.sh
-# make the script executable
+    echo "exec streamlit run /app/app.py --server.port=${PORT}" >> /app/entrypoint.sh
+
 RUN chmod +x /app/entrypoint.sh
 
-# Patch Analytics
-RUN mamba run -n streamlit-env python hooks/hook-analytics.py
+RUN /root/miniforge3/bin/mamba run -n streamlit-env python /app/hooks/hook-analytics.py
 
-# Set Online Deployment
-RUN jq '.online_deployment = true' settings.json > tmp.json && mv tmp.json settings.json
+RUN jq '.online_deployment = true' /app/settings.json > /app/tmp.json && mv /app/tmp.json /app/settings.json
 
-# Download latest OpenMS App executable as a ZIP file
 RUN curl -L \
   -o /app/OpenMS-NuXLApp.zip \
   https://github.com/Arslan-Siraj/nuxl-app/releases/download/0.6.0/OpenMS-NuXLApp.zip
 
-# Run app as container entrypoint.
 EXPOSE $PORT
 ENTRYPOINT ["/app/entrypoint.sh"]
+
