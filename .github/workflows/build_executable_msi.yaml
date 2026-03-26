@@ -33,7 +33,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       shell: bash
       run: |
-        gh release download OpenMS_3_5_windows \
+        gh release download openms-package_develop_26_03_2026 \
           --repo Arslan-Siraj/nuxl_webapp_supporting_files \
           --pattern "*.zip"
           
