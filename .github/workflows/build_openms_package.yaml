@@ -1,4 +1,5 @@
 name: Build OpenMS package
+
 on:
   workflow_dispatch:
 
@@ -26,7 +27,7 @@ jobs:
         cache: 'false'
         archives: 'qtsvg qtimageformats qtbase'
 
-    - name: Locate Qt runtime and add to PATH
+    - name: Locate Qt runtime and CMake package
       shell: pwsh
       run: |
         $qtCore = Get-ChildItem -Path "$env:RUNNER_WORKSPACE", "$env:RUNNER_TEMP", "C:\Qt" `
@@ -34,10 +35,27 @@ jobs:
         if (-not $qtCore) {
           throw "Qt6Core.dll not found after install-qt-action"
         }
+
         $qtBin = $qtCore.Directory.FullName
+        $qtRoot = Split-Path $qtBin -Parent
+        $qtCMakeDir = Join-Path $qtRoot "lib\cmake\Qt6"
+
+        if (-not (Test-Path (Join-Path $qtBin "Qt6Core.dll"))) {
+          throw "Qt6Core.dll missing in $qtBin"
+        }
+        if (-not (Test-Path $qtCMakeDir)) {
+          throw "Qt6 CMake package dir not found: $qtCMakeDir"
+        }
+
         "QT_BIN_DIR=$qtBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        "QT_ROOT_DIR=$qtRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        "Qt6_DIR=$qtCMakeDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
         $qtBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
         Write-Host "Using Qt bin: $qtBin"
+        Write-Host "Using Qt root: $qtRoot"
+        Write-Host "Using Qt6_DIR: $qtCMakeDir"
 
     - name: Set up Visual Studio shell
       uses: egor-tensin/vs-shell@v2
@@ -113,9 +131,9 @@ jobs:
     - name: Build Windows
       shell: bash
       run: |
-        mkdir $GITHUB_WORKSPACE/OpenMS/bld/
-        bash OpenMS/tools/ci/capture-env.sh -v $GITHUB_WORKSPACE/OpenMS/bld/CMakeCache.txt
-        ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cibuild.cmake
+        mkdir -p "$GITHUB_WORKSPACE/OpenMS/bld"
+        bash OpenMS/tools/ci/capture-env.sh -v "$GITHUB_WORKSPACE/OpenMS/bld/CMakeCache.txt"
+        ctest --output-on-failure -V -S "$GITHUB_WORKSPACE/OpenMS/tools/ci/cibuild.cmake"
       env:
         OPENMS_CONTRIB_LIBS: "${{ github.workspace }}/OpenMS/contrib"
         CI_PROVIDER: "GitHub-Actions"
@@ -138,20 +156,27 @@ jobs:
         CCACHE_COMPRESS: true
         CCACHE_COMPRESSLEVEL: 12
         CCACHE_MAXSIZE: 400M
+        CMAKE_PREFIX_PATH: "${{ env.QT_ROOT_DIR }}"
+        Qt6_DIR: "${{ env.Qt6_DIR }}"
+        PATH: "${{ env.QT_BIN_DIR }};${{ github.workspace }}\\OpenMS\\contrib\\lib;${{ env.PATH }}"
 
     - name: Verify runtime DLL visibility before packaging
       shell: pwsh
       run: |
         Write-Host "QT_BIN_DIR=$env:QT_BIN_DIR"
+        Write-Host "QT_ROOT_DIR=$env:QT_ROOT_DIR"
+        Write-Host "Qt6_DIR=$env:Qt6_DIR"
+
         if (-not (Test-Path (Join-Path $env:QT_BIN_DIR "Qt6Core.dll"))) {
           throw "Qt6Core.dll is not reachable in QT_BIN_DIR"
         }
-        Get-Command Qt6Core.dll -ErrorAction SilentlyContinue | Format-List *
+
+        Get-ChildItem "$env:QT_BIN_DIR" | Where-Object { $_.Name -like "Qt6*.dll" } | Select-Object Name
 
     - name: Package
       shell: bash
       run: |
-        ctest --output-on-failure -V -S $GITHUB_WORKSPACE/OpenMS/tools/ci/cipackage.cmake
+        ctest --output-on-failure -V -S "$GITHUB_WORKSPACE/OpenMS/tools/ci/cipackage.cmake"
       env:
         SOURCE_DIRECTORY: "${{ github.workspace }}/OpenMS"
         PACKAGE_TYPE: zip
@@ -159,6 +184,8 @@ jobs:
         CI_PROVIDER: "GitHub-Actions"
         CPACK_PACKAGE_FILE_NAME: "openms-package"
         BUILD_NAME: "${{ env.RUN_NAME }}-Win64-class-topp-${{ github.run_number }}"
+        CMAKE_PREFIX_PATH: "${{ env.QT_ROOT_DIR }}"
+        Qt6_DIR: "${{ env.Qt6_DIR }}"
         PATH: "${{ env.QT_BIN_DIR }};${{ github.workspace }}\\OpenMS\\contrib\\lib;${{ env.PATH }}"
 
     - name: Upload package as artifact
