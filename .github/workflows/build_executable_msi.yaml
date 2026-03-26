@@ -154,13 +154,12 @@ jobs:
         xcopy /E /I /Y ".\NuXL" ".\python-3.10.0\Lib\site-packages\pyopenms\share\OpenMS\NuXL"
         
         REM Rename folder
-        ren "streamlit" ".streamlit"
+        if exist "streamlit" ren "streamlit" ".streamlit"
         
         REM Remove unwanted import line from run.py
         echo Checking file...
         if not exist "%FILE%" (
             echo ERROR: File not found: %FILE%
-            pause
             exit /b 1
         )
         
@@ -169,7 +168,6 @@ jobs:
         
         if errorlevel 1 (
             echo ERROR: PowerShell command failed.
-            pause
             exit /b 1
         )
         
