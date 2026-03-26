@@ -10,7 +10,7 @@
 # This Dockerfile builds OpenMS on NuXL branch, the TOPP tools, pyOpenMS and thidparty tools.
 FROM ubuntu:22.04 AS setup-build-system
 
-ARG OPENMS_REPO=https://github.com/OpenMS/OpenMS.git
+ARG OPENMS_REPO=https://github.com/Arslan-Siraj/OpenMS.git
 ARG OPENMS_BRANCH=develop
 ARG PORT=8501
 
