@@ -133,7 +133,6 @@ jobs:
         set PYTHON=.\python-3.10.0\python
         set REQ=.\requirements_embd_py310_win.txt
         set MARKER=.\python-3.10.0\.deps_installed
-        set FILE=.\python-3.10.0\Lib\site-packages\nuxl_rescore\run.py
         
         REM If marker exists, skip installation
         if exist "%MARKER%" goto RUN_APP
@@ -156,18 +155,9 @@ jobs:
         REM Rename folder
         if exist "streamlit" ren "streamlit" ".streamlit"
         
-        REM Remove unwanted import line from run.py
-        echo Checking file...
-        if not exist "%FILE%" (
-            echo ERROR: File not found: %FILE%
-            exit /b 1
-        )
-        
-        echo Removing line...
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Content '%FILE%') | Where-Object { $_ -ne 'from pkg_resources import get_distribution' } | Set-Content '%FILE%'"
-        
+        "%PYTHON%" -m pip install "setuptools<82" --no-warn-script-location
         if errorlevel 1 (
-            echo ERROR: PowerShell command failed.
+            echo Failed to install compatible setuptools.
             exit /b 1
         )
         
