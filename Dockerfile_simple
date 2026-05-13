@@ -42,6 +42,13 @@ RUN wget -q \
     && rm -f Miniforge3-Linux-x86_64.sh
 RUN mamba --version
 
+# Make /root traversable so the entrypoint can `source
+# /root/miniforge3/bin/activate ...` when the container runs as a non-root
+# user (apptainer/singularity maps the host UID into the container; the
+# default ubuntu /root is 0700 which would block path traversal). +x only,
+# not +r, so the directory listing remains private.
+RUN chmod o+x /root
+
 # Setup mamba environment.
 RUN mamba create -n streamlit-env python=3.10 
 RUN echo "mamba activate streamlit-env" >> ~/.bashrc
