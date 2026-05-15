@@ -123,7 +123,9 @@ RUN rm -rf openms-build
 # Prepare and run streamlit app.
 FROM compile-openms AS run-app
 
-# Install Redis server for job queue and nginx for load balancing
+# Install Redis server for job queue and nginx for load balancing.
+# Redis data lives under $RUNTIME_DIR at runtime (see entrypoint.sh) so no
+# /var/lib/redis setup is needed - that path is not writable under Apptainer.
 RUN apt-get update && apt-get install -y --no-install-recommends redis-server nginx \
     && rm -rf /var/lib/apt/lists/*
 
