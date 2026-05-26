@@ -98,15 +98,17 @@ jobs:
           build-args: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
-      - name: Retag for kind (stable local tag)
+      - name: Retag for kind (image name the kustomize overlay points at)
         run: |
-          # load:true above loaded all meta-action tags into local docker.
-          # Retag the first one to the stable name the kustomize overlay expects.
+          # The prod overlay sets `newName: ghcr.io/openms/streamlit-template`,
+          # `newTag: main-full`. The rendered manifests reference that exact
+          # ref, so we need it loaded into kind under that name. Tag invariant
+          # across branches/variants so the test always works.
           FIRST_TAG=$(printf '%s\n' "${{ steps.meta.outputs.tags }}" | head -n 1)
-          docker tag "$FIRST_TAG" openms-streamlit:test
+          docker tag "$FIRST_TAG" ghcr.io/openms/streamlit-template:main-full
 
       - name: Save image as tar
-        run: docker save openms-streamlit:test -o /tmp/image.tar
+        run: docker save ghcr.io/openms/streamlit-template:main-full -o /tmp/image.tar
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
@@ -192,15 +194,17 @@ jobs:
           build-args: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
-      - name: Retag for kind (stable local tag)
+      - name: Retag for kind (image name the kustomize overlay points at)
         run: |
-          # load:true above loaded all meta-action tags into local docker.
-          # Retag the first one to the stable name the kustomize overlay expects.
+          # The prod overlay sets `newName: ghcr.io/openms/streamlit-template`,
+          # `newTag: main-full`. The rendered manifests reference that exact
+          # ref, so we need it loaded into kind under that name. Tag invariant
+          # across branches/variants so the test always works.
           FIRST_TAG=$(printf '%s\n' "${{ steps.meta.outputs.tags }}" | head -n 1)
-          docker tag "$FIRST_TAG" openms-streamlit:test
+          docker tag "$FIRST_TAG" ghcr.io/openms/streamlit-template:main-full
 
       - name: Save image as tar
-        run: docker save openms-streamlit:test -o /tmp/image.tar
+        run: docker save ghcr.io/openms/streamlit-template:main-full -o /tmp/image.tar
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
@@ -580,7 +584,7 @@ jobs:
           # Filter out Traefik IngressRoute (kind cluster uses nginx) and force imagePullPolicy=Never
           kubectl kustomize k8s/overlays/prod/ | \
             yq 'select(.kind != "IngressRoute")' | \
-            sed 's|imagePullPolicy: IfNotPresent|imagePullPolicy: Never|g' | \
+            sed -E 's|imagePullPolicy: (IfNotPresent\|Always)|imagePullPolicy: Never|g' | \
             sed 's|storageClassName: cinder-csi|storageClassName: standard|g' > /tmp/manifests.yaml
           for i in 1 2 3 4 5; do
             if kubectl apply -f /tmp/manifests.yaml; then
@@ -720,7 +724,7 @@ jobs:
       - name: Deploy with Kustomize (full manifests, no filter)
         run: |
           kubectl kustomize k8s/overlays/prod/ | \
-            sed 's|imagePullPolicy: IfNotPresent|imagePullPolicy: Never|g' | \
+            sed -E 's|imagePullPolicy: (IfNotPresent\|Always)|imagePullPolicy: Never|g' | \
             sed 's|storageClassName: cinder-csi|storageClassName: standard|g' > /tmp/manifests.yaml
           for i in 1 2 3 4 5; do
             if kubectl apply -f /tmp/manifests.yaml; then
