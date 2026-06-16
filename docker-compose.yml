@@ -1,37 +1,25 @@
-version: '3.8'
-
 services:
-   nuxl-app:
+  openms-streamlit-template:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         GITHUB_TOKEN: $GITHUB_TOKEN
-    image: nuxl_app
-    container_name: nuxl-app
+    image: openms_streamlit_template
+    container_name: openms-streamlit-template
     restart: always
     ports:
-      - 8501:8501 # increment port numbers (here 28504)
+      - 8501:8501
     volumes:
-      - workspaces-nuxl-app:/workspaces-nuxl-app
-    command: streamlit run nuxl-app/run.py
+      - workspaces-streamlit-template:/workspaces-streamlit-template
+      # Optional: bind-mount a host directory of MS data files at the path
+      # that `local_data_dir` in settings.json points to (the Docker image
+      # defaults this to /mounted-data). When the directory exists at
+      # runtime, the upload page shows an in-app file browser for it.
+      # - /path/on/host:/mounted-data:ro
+    environment:
+      # Number of Streamlit server instances (default: 1 = no load balancer).
+      # Set to >1 to enable nginx load balancing across multiple Streamlit instances.
+      - STREAMLIT_SERVER_COUNT=1
 volumes:
-    workspaces-nuxl-app:
-
-#version: "3"
-#services:
-#  streamlit:
-#    build: .
-#    command: "streamlit run src/monitor.py local --server.enableCORS false " ### for checking as local add local
-#    ports:
-#      - "8501:8501"
-#    volumes:
-#      - "./src:/usr/src/app/src"
-
-# docker-compose up --build (This command will build the Docker image using the provided Dockerfile and start the container)
-# Then can access via http://localhost:8501
-# docker-compose exec streamlit /bin/bash (to run tools inside container)
-
-# check the packages versions? can specify in enviroment.yml
-# docker ps #to get the ID
-# docker cp ID:/app/package_versions_in_docker.txt ./package_versions_in_docker.txt
+  workspaces-streamlit-template:

@@ -1,105 +1,167 @@
+"""
+Main page for the OpenMS Template App.
+
+This module sets up and displays the Streamlit app for the OpenMS Template App.
+It includes:
+- Setting the app title.
+- Displaying a description.
+- Providing a download button for the Windows version of the app.
+
+Usage:
+Run this script to launch the OpenMS Template App.
+
+Note:
+- If run in local mode, the CAPTCHA control is not applied.
+- If not in local mode, CAPTCHA control is applied to verify the user.
+
+Returns:
+    None
+"""
+
 from pathlib import Path
 import streamlit as st
 
-from src.common import page_setup, v_space
+from src.common.common import page_setup, v_space
 
 page_setup(page="main")
 
-st.markdown(
+st.markdown("# 👋 Quick Start")
+st.markdown("## Template for OpenMS web apps using the **streamlit** framework")
+c1, c2 = st.columns(2)
+c1.markdown(
+    """
+## ⭐ Features
+       
+- Simple workflows with **pyOpenMS** 
+- Complex workflows utilizing **OpenMS TOPP tools** with parallel execution.
+- Workspaces for user data with unique shareable IDs
+- Persistent parameters and input files within a workspace
+- Captcha control
+- Packaged executables for Windows
+- Deploy multiple apps easily with [docker-compose](https://github.com/OpenMS/streamlit-deployment)
+"""
+)
+v_space(1, c2)
+c2.image("assets/openms_transparent_bg_logo.svg", width=300)
+if Path("OpenMS-App.zip").exists():
+    st.subheader(
         """
-        # OpenMS NuXL App
-        ### NuXL: A specialized protein nucleic-acid crosslink search engine
-        Welcome to the OpenMS NuXL App, a web application for the NuXL protein-nucleic acid search engine built using [OpenMS](https://openms.de/) and [pyOpenMS](https://pyopenms.readthedocs.io/en/latest/).
-
-        """
+Download the latest version for Windows here by clicking the button below.
+"""
     )
-st.image("assets/NuXL_image.png")
-st.markdown(
-      """
-      Here, we take the NuXL search engine in a simple and easy graphical user interface. NuXL is a dedicated software package designed for the analysis of XL-MS (cross-linking mass spectrometry) data obtained from UV and chemically crosslinked protein–RNA/DNA samples. 
-      This powerful tool allows for reliable, FDR-controlled assignment of protein–nucleic acid crosslinking sites in samples treated with UV light or chemical crosslinkers. It offers rescoring and user-friendly matched spectra visualization, including ion annotations.
+    with open("OpenMS-App.zip", "rb") as file:
+        st.download_button(
+            label="Download for Windows",
+            data=file,
+            file_name="OpenMS-App.zip",
+            mime="archive/zip",
+            type="primary",
+        )
+    st.markdown(
+        """
+Extract the zip file and run the installer (.msi) file to install the app. The app can then be launched using the corresponding desktop icon.
+"""
+    )
 
-      """
+st.markdown("## 📖 Documentation")
+st.markdown(
+    f"""
+This template app includes documentation for **users** including **installation** and introduction to template specific concepts such as **workspaces** and developers with detailed instructions on **how to create and deploy your own app** based on this template.
+"""
+)
+st.page_link(
+    "content/documentation.py",
+    label="Read documentation here, select chapter in the content menu.",
+    icon="➡️",
 )
 
-st.markdown("""
-**Reference:** 
-  - **NuXL search engine:**
-      Welp, L. M., Wulf, A., Chernev, A., Horokhovskyi, Y., Moshkovskii, S., Dybkov, O., ... & Urlaub, H. (2025). Chemical crosslinking extends and complements UV crosslinking in analysis of RNA/DNA nucleic acid–protein interaction sites by mass spectrometry. Nucleic Acids Research, 53(15), gkaf727. 
-      [https://doi.org/10.1093/nar/gkaf727](https://doi.org/10.1093/nar/gkaf727)
-  - **NuXL rescore:**
-      Siraj, A., Bouwmeester, R., Declercq, A., Welp, L., Chernev, A., Wulf, A., ... & Sachsenberg, T. (2024). Intensity and retention time prediction improves the rescoring of protein‐nucleic acid cross‐links. Proteomics, 24(8), 2300144.
-      [https://doi.org/10.1002/pmic.202300144](https://doi.org/10.1002/pmic.202300144) 
-""")
+st.markdown(
+    """##  Workspaces and Settings
+The **sidebar** contains to boxes, one for **workspaces** (in local mode) and one for **settings**.
 
-#In docker, OpenMS-App (executable) can be downloadable from github
-if Path("OpenMS-NuXLApp.zip").exists():
-      st.markdown(
-      """
-      ## Installation
+🖥️ **Workspaces** store user inputs, parameters and results for a specific session or analysis task.
 
-      ### Download for Windows
+In **online mode** where the app is hosted on a remote server the workspace has a unique identifier number embedded within the URL. To share your data analysis with collaboration partners simply share the URL.
 
-      Simply download, extract the zip file and run the installer (.msi) file to install the app. The app can then be launched using the corresponding desktop icon.
-      """)
-      with open("OpenMS-NuXLApp.zip", "rb") as file:
-            st.download_button(
-                        label="Download for Windows",
-                        data=file,
-                        file_name="OpenMS-NuXLApp.zip",
-                        mime="archive/zip",
-                        type="primary"
-                        )
+In **local mode** where the app is run locally on a PC (e.g. via Windows executable) the user can create and delete separate workspaces for different projects.
 
-st.markdown("""
-      User can start right away analyzing your data by following the steps below:
+⚙️ **Settings** contain global settings which are relevant for all pages, such as the image export format.
+"""
+)
 
-      ### 1. Create a workspace
-      On the left side of this page user can define a workspace where all data including uploaded files will be stored. Entering a workspace will switch to an existing one or create a new one if it does not exist yet. In the web app, user can share their results via the unique workspace ID. Be careful with sensitive data, anyone with access to this ID can view access the data. 
 
-      ### 2. 📁 Upload your files
-      Upload `.mzML`. `.raw` and `.fasta` files via the **File Upload** tab. The data will be stored in the workspace. With the online hosted web app, user can upload only one file at a time.
-      Locally there is no limit in files. However, it is recommended to upload large number of files by specifying the path to a directory containing the files.
+st.markdown("## Example pages: workflows, visualization and more")
+st.markdown(
+    """
+This app serves both as documentation and showcase what's possible with OpenMS web apps. 
+            
+In general there are two options for building workflows.
+            
+### 1. 🚀 **TOPP Workflow Framework**
+            
+Use this option if you want a standardized framework for building your workflow.
 
-      Your uploaded files will be shown on the same **File Upload** page in  **mzML files** and **Fasta files** tabs. Also user can remove the files from workspace.
+- **Pre-defined user interface** all in one streamlit page with all steps on different pages:
+    - **File Upload**: upload, download and delete input files
+    - **Configure**: Automatically display input widgets for all paramters in TOPP tools and custom Python scripts
+    - **Run**: Start and stop workflow execution, includes continous log
+    - **Results**: Interactive result dashboard
+- **Write less code**: everything from file upload, input widget generation and execution of tools is handled via convenient functions
+- **Fast and performant workflows**: Automatic parallel execution of TOPP tools ensures great speed, comparable with workflows written in bash
+- **Ideal for longer workflows**: Close the app and come back to the still running or finish workflow the next day, by entering your workspace again.
+"""
+)
+st.page_link(
+    "content/documentation.py",
+    label="Check out extensive documentation on the TOPP tool framework.",
+    icon="➡️",
+)
+st.page_link(
+    "content/topp_workflow_file_upload.py",
+    label="Play around with the example workflow.",
+    icon="➡️",
+)
+st.markdown(
+    """
+### 2. 🐍 **Flexible, custom workflow with pyOpenMS on multiple pages**
+            
+Use this option if you want full control over your workflow implementation and user interface.
 
-      Users can download the example files from **Load example file** tab to current workspace.
+Uses the integrated parameter handling with global parameters across pages, including uploaded files.
+            
+To get an idea check out the following pages from the example worklfow (file upload first!).
+"""
+)
+st.page_link(
+    "content/file_upload.py",
+    label="Upload your own mzML files or use the provided example data set.",
+    icon="➡️",
+)
+st.page_link(
+    "content/raw_data_viewer.py",
+    label="Visualize mzML file content in an interactive dashboard.",
+    icon="➡️",
+)
+st.page_link(
+    "content/run_example_workflow.py",
+    label="Run a small example workflow with mzML files and check out results.",
+    icon="➡️",
+)
 
-      ### 3. ⚙️ Analyze your uploaded data
-
-      Select the `.mzML/.raw` and `.fasta` files for analysis, configure user settings including NuXL advanced parameters, and start the analysis using the **Run-analysis** button.
-
-      User can terminate the analysis immediately using the **Terminate/Clear** button and user can see the real-time log of search engine.
-      Once the analysis completed successfully, the output table will be displayed on the page, along with downloadable links for crosslink identification files for that particular analysis.
-
-      ### 4. ⚙️ Rescoring
-      Select without FDR-controlled `.idXML` file from output of NuXL search engine. The name of file pattern is `(raw or mzML file_name).idXML`. If the NuxL search engine succesfully run, the file will showup here. After including the features start the analysis using the **Run-rescoring** button.
-
-      User can terminate the rescoring analysis immediately using the **Terminate/Clear** button and User can see the real-time log of rescoring.
-      Once the analysis completed successfully, the comparison PseudoROC curve at CSM-level FDR will generated, and available for download.
-
-      ### 5. ⚙️ DIA spectra library generation
-      Select the experiments with (`.mzML`) it will extract the identified protein-NA and peptides from NuXL output at 1% CSM-level FDR, available in `.idXML` files. Optionally, user can do iRT alignment by providing MSFragger `library.tsv`, with `linear` or `piecewise` calibration mode.
-
-      User can start the analysis using the **Generate Library** button. USer can terminate the rescoring analysis immediately using the **Terminate/Clear** button and User can see the real-time log of spectral library generation.
-
-      ### 6. 📊 View your results
-      Here, user can visualize and explore the output of the search engine. All crosslink output files in the workspace are available on the **View Results** tab.
-      After selecting any file, user can view the `CSMs Table`, `PRTs Table`, `PRTs Summary`, `Crosslink efficiency` and `Precursor adducts summary`.
-
-      Users can manage their result files available in workspace with `Result files` tab.Also Users can upload previously analyzed results files `.idXML and .tsv` to workspace with `Upload result files` tab.
-
-      Note: Every table and plot can be downloaded, as indicated formats in the side-bar under ⚙️ Settings.
-
-      ### How to upload result files (e.g., from external sources/collaborator) for manual inspection and visualization?
-      At **Upload result files** tab, user can  `upload` the results files and can visualize in **View Results** tab.
-      In the web app, collaborators can visualize files by sharing a unique workspace ID.
-
-      ⚠️ Note: In the web app, all users with a unique workspace ID have the same rights.
-
-      #### Contact
-      For any inquiries or assistance, please feel free to reach out to us.  
-
-      [![Discord Shield](https://img.shields.io/discord/832282841836159006?style=flat-square&message=Discord&color=5865F2&logo=Discord&logoColor=FFFFFF&label=Discord)](https://discord.gg/4TAGhqJ7s5)  [![Gitter](https://img.shields.io/static/v1?style=flat-square&message=on%20Gitter&color=ED1965&logo=Gitter&logoColor=FFFFFF&label=Chat)](https://gitter.im/OpenMS/OpenMS?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)  [![GitHub Issues](https://img.shields.io/badge/Open-GitHub%20Issue-%23121011?style=flat-square&logo=github)](https://github.com/Arslan-Siraj/nuxl-app/issues)
-
-""")
+st.markdown(
+    """
+### Other Topics
+            
+Includes other example pages which are independent to showcase other functionalities.
+"""
+)
+st.page_link(
+    "content/simple_workflow.py",
+    label="A very simple worklfow explaining the concepts of data caching in streamlit.",
+    icon="➡️",
+)
+st.page_link(
+    "content/run_subprocess.py",
+    label="How to run any command line tool as subprocess from within the OpenMS web app.",
+    icon="➡️",
+)
