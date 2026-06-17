@@ -1,6 +1,7 @@
 {
     "selected-mzML-files": [],
     "image-format": "svg",
+    "table-format": "csv",
     "2D-map-intensity-cutoff": 5000,
 
     "example-x-dimension": 10,

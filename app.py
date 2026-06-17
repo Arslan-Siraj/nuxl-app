@@ -17,6 +17,7 @@ if __name__ == '__main__':
             st.Page(Path("content", "nuxl_workflow.py"), title="NuXL search engine", icon="⚙️"),
             st.Page(Path("content", "nuxl_rescoring_workflow.py"), title="NuXL rescoring workflow", icon="⚙️"),
             st.Page(Path("content", "dia_library_workflow.py"), title="DIA library generation", icon="⚙️"),
+            st.Page(Path("content", "results.py"), title="Results", icon="📊"),
         ],
     }
 

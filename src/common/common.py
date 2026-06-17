@@ -771,14 +771,25 @@ def render_sidebar(page: str = "") -> None:
                 img_formats.index(params["image-format"]),
                 key="image-format",
             )
-            st.markdown("## Spectrum Plotting")
-            st.selectbox("Bin Peaks", ["auto", True, False], key="spectrum_bin_peaks")
-            if st.session_state["spectrum_bin_peaks"] == True:
-                st.number_input(
-                    "Number of Bins (m/z)", 1, 10000, 50, key="spectrum_num_bins"
-                )
-            else:
-                st.session_state["spectrum_num_bins"] = 50
+
+            table_formats = ["tsv", "csv"] #,"xlsx"
+            st.selectbox(
+                "table export format",
+                table_formats,
+                table_formats.index(params["table-format"]), key="table-format"
+            )
+            # Button to reset parameters, sidebar widgets are settings and will not be resettet!
+            if st.button("⚠️ Load default parameters"):
+                params = load_params(default=True)
+
+            #st.markdown("## Spectrum Plotting")
+            #st.selectbox("Bin Peaks", ["auto", True, False], key="spectrum_bin_peaks")
+            #if st.session_state["spectrum_bin_peaks"] == True:
+            #    st.number_input(
+            #        "Number of Bins (m/z)", 1, 10000, 50, key="spectrum_num_bins"
+            #    )
+            #else:
+            #    st.session_state["spectrum_num_bins"] = 50
 
         with st.expander("📊 **Resource Utilization**"):
             monitor_hardware()
