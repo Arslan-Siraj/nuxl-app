@@ -14,28 +14,15 @@ if __name__ == '__main__':
             st.Page(Path("content", "quickstart.py"), title="Quickstart", icon="👋"),
             st.Page(Path("content", "documentation.py"), title="Documentation", icon="📖"),
         ],
-        "pyOpenMS Toolbox": [
-            st.Page(Path("content", "digest.py"), title="In Silico Digest", icon="✂️"),
-            st.Page(Path("content", "peptide_mz_calculator.py"), title="m/z Calculator", icon="⚖️"),
-            st.Page(Path("content", "isotope_pattern_generator.py"), title="Isotopic Pattern Calculator", icon="📶"),
-            st.Page(Path("content", "fragmentation.py"), title="Fragment Ion Generation", icon="💥"),
+        "NuXL Search Engine": [
+            st.Page(Path("content", "nuxl_workflow.py"), title="NuXL search engine", icon="⚙️"),
         ],
-        "TOPP Workflow Framework": [
-            st.Page(Path("content", "topp_workflow_file_upload.py"), title="File Upload", icon="📁"),
-            st.Page(Path("content", "topp_workflow_parameter.py"), title="Configure", icon="⚙️"),
-            st.Page(Path("content", "topp_workflow_execution.py"), title="Run", icon="🚀"),
-            st.Page(Path("content", "topp_workflow_results.py"), title="Results", icon="📊"),
+        "NuXL Rescoring Workflow": [
+            st.Page(Path("content", "nuxl_rescoring_workflow.py"), title="NuXL rescoring workflow", icon="⚙️"),
         ],
-        "pyOpenMS Workflow" : [
-            st.Page(Path("content", "file_upload.py"), title="File Upload", icon="📂"),
-            st.Page(Path("content", "raw_data_viewer.py"), title="View MS data", icon="👀"),
-            st.Page(Path("content", "run_example_workflow.py"), title="Run Workflow", icon="⚙️"),
-            st.Page(Path("content", "download_section.py"), title="Download Results", icon="⬇️"),
+        "DIA library generation": [
+            st.Page(Path("content", "dia_library_workflow.py"), title="DIA library generation", icon="⚙️"),
         ],
-        "Others Topics": [
-            st.Page(Path("content", "simple_workflow.py"), title="Simple Workflow", icon="⚙️"),
-            st.Page(Path("content", "run_subprocess.py"), title="Run Subprocess", icon="🖥️"),
-        ]
     }
 
     pg = st.navigation(pages)
