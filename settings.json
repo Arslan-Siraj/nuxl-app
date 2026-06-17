@@ -1,9 +1,13 @@
 {
     "app-name": "NuXLApp",
     "github-user": "OpenMS",
-    "version": "0.8.0",
-    "repository-name": "nuxl-app",
-    "openms-version": "develop-branch-41ce6cf",
+    "version": "1.1.1",
+    "repository-name": "streamlit-template",
+    "legal_links": {
+        "impressum": "https://openms.de/impressum",
+        "privacy": "https://openms.de/privacy",
+        "terms": "https://openms.de/terms"
+    },
     "analytics": {
         "google-analytics": {
             "enabled": false,
