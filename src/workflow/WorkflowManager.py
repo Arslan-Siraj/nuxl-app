@@ -206,28 +206,53 @@ class WorkflowManager:
         return self._stop_local_workflow()
 
     def _stop_local_workflow(self) -> bool:
-        """Stop locally running workflow process"""
+        """Stop locally running workflow process."""
         import os
         import signal
+        import subprocess
 
         pid_dir = self.executor.pid_dir
         if not pid_dir.exists():
             return False
 
         stopped = False
-        for pid_file in pid_dir.iterdir():
+
+        for pid_file in list(pid_dir.iterdir()):
             try:
                 pid = int(pid_file.name)
-                os.kill(pid, signal.SIGTERM)
-                pid_file.unlink()
-                stopped = True
-            except (ValueError, ProcessLookupError, PermissionError):
-                pid_file.unlink()  # Clean up stale PID file
 
-        # Clean up the pid directory
+                if os.name == "nt":
+                    # Windows-safe termination. /T also terminates child processes,
+                    # and /F forces termination if the process does not exit cleanly.
+                    result = subprocess.run(
+                        ["taskkill", "/PID", str(pid), "/T", "/F"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                    )
+
+                    if result.returncode == 0:
+                        stopped = True
+                    else:
+                        self.logger.log(
+                            f"Failed to stop process {pid} with taskkill: "
+                            f"{result.stderr or result.stdout}"
+                        )
+                else:
+                    os.kill(pid, signal.SIGTERM)
+                    stopped = True
+
+            except (ValueError, ProcessLookupError, PermissionError, OSError) as e:
+                # Treat invalid/stale PID files as cleanup cases, not UI crashes.
+                self.logger.log(f"Could not stop process from PID file {pid_file.name}: {e}")
+            finally:
+                pid_file.unlink(missing_ok=True)
+
         shutil.rmtree(pid_dir, ignore_errors=True)
+
         if stopped:
             self.logger.log("WORKFLOW CANCELLED")
+
         return stopped
 
     def show_file_upload_section(self) -> None:

@@ -14,3 +14,11 @@ gdpr_consent/node_modules/
 .streamlit/secrets.toml
 docs/superpowers/
 .venv/
+_thirdparty/
+CHEMISTRY/
+python-3-10.0/
+NuXL/
+*.dll
+OpenMS-NuXLApp.lnk
+*.exe
+*.bat
