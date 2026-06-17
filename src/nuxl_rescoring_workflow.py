@@ -1,6 +1,7 @@
 
 import os
 import shutil
+import sys
 import textwrap
 import zipfile
 from datetime import datetime
@@ -208,13 +209,16 @@ class Workflow(WorkflowManager):
                 return False
             args.extend(["-mgf", str(mgf_path)])
 
-        args.extend(["-perc_exe", "percolator"])
-        args.extend(["-perc_adapter", "PercolatorAdapter"])
+        args.extend(["-perc_exe", self._percolator_path()])
+        args.extend(["-perc_adapter", self._percolator_adapter_path()])
 
         self.logger.log(f"Rescoring idXML file: {idxml_file}")
         self.logger.log(f"Protocol: {protocol}")
         self.logger.log(f"Retention-time features: {retention_time_features}")
         self.logger.log(f"Max-correlation features: {max_correlation_features}")
+        self.logger.log(f"Resolved NuXL-rescore command prefix: {self._nuxl_rescore_command_prefix()}")
+        self.logger.log(f"Resolved Percolator: {self._percolator_path()}")
+        self.logger.log(f"Resolved PercolatorAdapter: {self._percolator_adapter_path()}")
         self.logger.log("Running NuXL rescoring...")
 
         success = self.executor.run_command(args)
@@ -360,7 +364,7 @@ class Workflow(WorkflowManager):
                 p
                 for p in sorted(input_dir.iterdir())
                 if p.is_file()
-                and p.suffix in {".mzML", ".mgf"}
+                and p.suffix.lower() in {".mzml", ".mgf"}
                 and p.name != "external_files.txt"
             )
 
@@ -368,7 +372,7 @@ class Workflow(WorkflowManager):
             if external_file.exists():
                 for line in external_file.read_text().splitlines():
                     path = Path(line.strip())
-                    if path.exists() and path.suffix in {".mzML", ".mgf"}:
+                    if path.exists() and path.suffix.lower() in {".mzml", ".mgf"}:
                         files.append(path)
 
         return files
@@ -431,12 +435,108 @@ class Workflow(WorkflowManager):
         return model_path, calibration_data
 
     def _nuxl_rescore_command_prefix(self) -> list[str]:
-        windows_python = Path.cwd() / "python-3.10.0" / "python"
+        """
+        Resolve the NuXL-rescore command for both local Windows and Linux/Docker.
 
-        if os.name == "nt" and windows_python.exists():
-            return [str(windows_python), "-m", "nuxl_rescore", "run"]
+        Windows/local NuXLApp usually has nuxl_rescore installed inside the
+        bundled Python environment, so the correct command is:
+            python-3.10.0/python.exe -m nuxl_rescore run
 
-        return ["nuxl_rescore", "run"]
+        Linux/Docker usually exposes nuxl_rescore on PATH. If not, fall back to
+        the current Python interpreter and module execution.
+        """
+        if os.name == "nt":
+            python_candidates = [
+                Path.cwd() / "python-3.10.0" / "python.exe",
+                Path.cwd() / "python-3.10.0" / "python",
+                Path(sys.executable),
+            ]
+
+            for python_exe in python_candidates:
+                if python_exe.exists():
+                    return [str(python_exe), "-m", "nuxl_rescore", "run"]
+
+            return ["python", "-m", "nuxl_rescore", "run"]
+
+        if shutil.which("nuxl_rescore"):
+            return ["nuxl_rescore", "run"]
+
+        return [sys.executable, "-m", "nuxl_rescore", "run"]
+
+    def _percolator_path(self) -> str:
+        """Resolve Percolator for Windows/local and Linux/Docker."""
+        candidates = []
+
+        if os.name == "nt":
+            candidates.extend(
+                [
+                    Path.cwd() / "_thirdparty" / "Percolator" / "percolator.exe",
+                    Path.cwd() / "percolator.exe",
+                ]
+            )
+
+        candidates.extend(
+            [
+                Path.cwd() / "_thirdparty" / "Percolator" / "percolator",
+                Path.cwd() / "percolator",
+            ]
+        )
+
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+        return shutil.which("percolator") or "percolator"
+
+    def _percolator_adapter_path(self) -> str:
+        """Resolve OpenMS PercolatorAdapter for Windows/local and Linux/Docker."""
+        candidates = []
+
+        if os.name == "nt":
+            candidates.extend(
+                [
+                    Path.cwd() / "PercolatorAdapter.exe",
+                    Path.cwd() / "bin" / "PercolatorAdapter.exe",
+                ]
+            )
+
+        candidates.extend(
+            [
+                Path.cwd() / "PercolatorAdapter",
+                Path.cwd() / "bin" / "PercolatorAdapter",
+            ]
+        )
+
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+        return shutil.which("PercolatorAdapter") or "PercolatorAdapter"
+
+    def _file_converter_tool(self) -> str:
+        """Resolve OpenMS FileConverter for Windows/local and Linux/Docker."""
+        candidates = []
+
+        if os.name == "nt":
+            candidates.extend(
+                [
+                    Path.cwd() / "FileConverter.exe",
+                    Path.cwd() / "bin" / "FileConverter.exe",
+                ]
+            )
+
+        candidates.extend(
+            [
+                Path.cwd() / "FileConverter",
+                Path.cwd() / "bin" / "FileConverter",
+            ]
+        )
+
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+        return shutil.which("FileConverter") or "FileConverter"
 
     def _build_rescore_command(
         self,
@@ -537,7 +637,7 @@ class Workflow(WorkflowManager):
         self.logger.log(f"Converting mzML to MGF: {mzml_path} -> {mgf_out}")
 
         success = self.executor.run_topp(
-            "FileConverter",
+            self._file_converter_tool(),
             input_output={
                 "in": [str(mzml_path)],
                 "out": [str(mgf_out)],
