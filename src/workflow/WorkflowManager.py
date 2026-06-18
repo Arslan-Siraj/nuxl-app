@@ -10,6 +10,7 @@ import streamlit as st
 import shutil
 import time
 import traceback
+import pandas as pd
 
 class WorkflowManager:
     # Core workflow logic using the above classes

@@ -1320,7 +1320,8 @@ class StreamlitUI:
             self.zip_and_download_files(Path(self.workflow_dir, "input-files"))
 
     def parameter_section(self, custom_parameter_function) -> None:
-        st.toggle("Show advanced parameters", value=False, key="advanced")
+        # Hide this for NuXL
+        # st.toggle("Show advanced parameters", value=False, key="advanced")
 
         # Display threads configuration for local mode only
         if not st.session_state.settings.get("online_deployment", False):

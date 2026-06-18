@@ -118,32 +118,109 @@ class Workflow(WorkflowManager):
         super().__init__("NuXL Workflow", st.session_state["workspace"])
 
     def upload(self) -> None:
-        tabs = st.tabs(["MS data", "FASTA database"])
+        st.info(
+            "Files are uploaded globally. Click **Sync files from global workspace** "
+            "to make the current workspace files available for this workflow."
+        )
 
-        with tabs[0]:
-            self.ui.upload_widget(
-                key="mzML-files",
-                name="MS data",
-                file_types=["mzML", "raw"],
-                fallback=[
-                    str(f)
-                    for f in Path("example-data", "mzML").glob("*.mzML")
-                ],
+        if st.button("Sync files from global workspace", type="primary"):
+            self._sync_global_input_files()
+            st.success("Files synced into workflow input folders.")
+            st.rerun()
+
+        self._show_synced_files("mzML-files", "MS files")
+        self._show_synced_files("fasta-files", "FASTA databases")
+    
+    def _sync_global_input_files(self) -> None:
+        self._copy_global_folder_to_workflow_input(
+            global_folder_name="mzML-files",
+            workflow_key="mzML-files",
+            allowed_suffixes={".mzml", ".raw"},
+        )
+
+        self._copy_global_folder_to_workflow_input(
+            global_folder_name="fasta-files",
+            workflow_key="fasta-files",
+            allowed_suffixes={".fasta", ".fa"},
+        )
+
+    def _copy_global_folder_to_workflow_input(
+        self,
+        global_folder_name: str,
+        workflow_key: str,
+        allowed_suffixes: set[str],
+    ) -> None:
+        import shutil
+
+        source_dir = Path(st.session_state.workspace, global_folder_name)
+        target_dir = Path(self.workflow_dir, "input-files", workflow_key)
+
+        source_dir.mkdir(parents=True, exist_ok=True)
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        for old_file in target_dir.iterdir():
+            if old_file.is_file():
+                old_file.unlink()
+
+        for source_file in sorted(source_dir.iterdir()):
+            if (
+                source_file.is_file()
+                and source_file.name != "external_files.txt"
+                and source_file.suffix.lower() in allowed_suffixes
+            ):
+                shutil.copy2(source_file, target_dir / source_file.name)
+
+        external_file = source_dir / "external_files.txt"
+        if external_file.exists():
+            target_external_file = target_dir / "external_files.txt"
+            lines_to_keep = []
+
+            for line in external_file.read_text().splitlines():
+                path = Path(line.strip())
+                if path.exists() and path.suffix.lower() in allowed_suffixes:
+                    lines_to_keep.append(str(path))
+
+            if lines_to_keep:
+                target_external_file.write_text(
+                    "\n".join(lines_to_keep) + "\n",
+                    encoding="utf-8",
+                )
+
+    def _show_synced_files(self, workflow_key: str, title: str) -> None:
+        input_dir = Path(self.workflow_dir, "input-files", workflow_key)
+
+        st.markdown(f"##### {title}")
+
+        if not input_dir.exists():
+            st.warning("No synced files yet.")
+            return
+
+        files = [
+            f.name
+            for f in sorted(input_dir.iterdir())
+            if f.is_file() and f.name != "external_files.txt"
+        ]
+
+        external_files = input_dir / "external_files.txt"
+        if external_files.exists():
+            files.extend(
+                line.strip()
+                for line in external_files.read_text().splitlines()
+                if line.strip()
             )
 
-        with tabs[1]:
-            self.ui.upload_widget(
-                key="fasta-files",
-                name="FASTA database",
-                file_types=["fasta", "fa"],
-                fallback=[
-                    str(f)
-                    for f in Path("example-data", "fasta").glob("*.fasta")
-                ],
-            )
+        if not files:
+            st.warning("No synced files yet.")
+            return
+
+        st.dataframe(
+            pd.DataFrame({"file": files}),
+            use_container_width=True,
+        )
 
     @st.fragment
     def configure(self) -> None:
+        
         self.ui.select_input_file(
             "mzML-files",
             name="MS data",
@@ -167,7 +244,7 @@ class Workflow(WorkflowManager):
             nuxl_config["enzyme"]["restrictions"].remove("Trypsin/P")
             nuxl_config["enzyme"]["restrictions"].insert(0, "Trypsin/P")
 
-        st.markdown("### NuXL search parameters")
+        #st.markdown("### NuXL search parameters")
 
         # Row 1: enzyme + missed cleavages | peptide min + peptide max
         cols = st.columns(2)

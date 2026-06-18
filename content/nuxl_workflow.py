@@ -8,7 +8,7 @@ wf = Workflow()
 
 st.title('NuXL Search Engine')
 
-t = st.tabs(["📁 **File Upload**", "⚙️ **Configure**", "🚀 **Run**"])
+t = st.tabs(["📁 **Files**", "⚙️ **Configure**", "🚀 **Run**"])
 with t[0]:
     wf.show_file_upload_section()
 
