@@ -568,6 +568,7 @@ class Workflow(WorkflowManager):
                 database_file=database[0],
                 success=False,
             )
+            self._copy_results_to_global_result_files(result_dir)
             return False
 
         self._move_ambiguous_mass_file_to_results(
@@ -583,6 +584,8 @@ class Workflow(WorkflowManager):
             database_file=database[0],
             success=True,
         )
+
+        self._copy_results_to_global_result_files(result_dir)
 
         self.logger.log("NuXL search completed successfully.")
         return True
@@ -787,6 +790,41 @@ class Workflow(WorkflowManager):
                 shutil.move(str(candidate), str(target))
                 self.logger.log(f"Moved ambiguous masses file to results: {target}")
                 return
+
+    def _copy_results_to_global_result_files(self, workflow_result_dir: Path) -> None:
+        """
+        Copy all files generated in the workflow-local NuXL result directory to
+        the global NuXLApp result folder:
+
+            <workspace>/result-files
+
+        Do not use st.session_state here because execution can run in a workflow
+        process where Streamlit session state is not available.
+        """
+        global_result_dir = Path(self.workflow_dir).parent / "result-files"
+        global_result_dir.mkdir(parents=True, exist_ok=True)
+
+        copied = 0
+
+        for source_file in sorted(workflow_result_dir.iterdir()):
+            if not source_file.is_file():
+                continue
+
+            target_file = global_result_dir / source_file.name
+
+            try:
+                if source_file.resolve() == target_file.resolve():
+                    continue
+            except FileNotFoundError:
+                pass
+
+            shutil.copy2(source_file, target_file)
+            copied += 1
+
+        self.logger.log(
+            f"Copied {copied} NuXL result file(s) to global result-files: "
+            f"{global_result_dir}"
+        )
 
     def _write_search_parameter_log(
         self,
