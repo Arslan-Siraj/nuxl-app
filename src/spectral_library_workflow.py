@@ -37,7 +37,7 @@ class Workflow(WorkflowManager):
     - mzML/raw files are synced from <workspace>/mzML-files
     - only NuXL idXML result files containing _perc_0.0100 are synced from <workspace>/result-files
     - optional MSFragger TSV files are synced from <workspace>/result-files
-    - generated library outputs are copied back to <workspace>/result-files
+    - generated library output files are copied directly to <workspace>/result-files
     - after successful execution, a ZIP download button appears at the bottom
       of the execution page.
     """
@@ -688,24 +688,41 @@ class Workflow(WorkflowManager):
         zip_path: Path,
         exclude_files: set[Path] | None = None,
     ) -> tuple[Path, Path]:
-        exclude_files = exclude_files or set()
+        """
+        Copy generated DIA library output files directly into:
+
+            <workspace>/result-files
+
+        No extra library subfolder is created in result-files. Existing files are
+        not deleted; if a same-name file already exists, a numeric suffix is used.
+        """
+        exclude_files = {p.resolve() for p in (exclude_files or set())}
         global_result_dir = Path(self.workflow_dir).parent / "result-files"
         global_result_dir.mkdir(parents=True, exist_ok=True)
 
-        global_output_dir = self._unique_output_dir(global_result_dir / output_folder.name)
-        shutil.copytree(
-            output_folder,
-            global_output_dir,
-            ignore=self._ignore_excluded_files(exclude_files),
-        )
+        copied_files: list[Path] = []
+
+        for source_file in sorted(output_folder.rglob("*")):
+            if not source_file.is_file():
+                continue
+
+            if source_file.resolve() in exclude_files:
+                continue
+
+            target_file = self._unique_file_path(global_result_dir / source_file.name)
+            shutil.copy2(source_file, target_file)
+            copied_files.append(target_file)
 
         global_zip_path = self._unique_file_path(global_result_dir / zip_path.name)
         shutil.copy2(zip_path, global_zip_path)
 
-        self.logger.log(f"Copied spectral-library output folder to: {global_output_dir}")
+        self.logger.log(
+            "Copied spectral-library output file(s) directly to global result-files:\n"
+            + "\n".join(f"- {file}" for file in copied_files)
+        )
         self.logger.log(f"Copied spectral-library ZIP to global result-files: {global_zip_path}")
 
-        return global_output_dir, global_zip_path
+        return global_result_dir, global_zip_path
 
     def _ignore_excluded_files(self, exclude_files: set[Path]) -> Any:
         resolved_exclude_files = {p.resolve() for p in exclude_files}
@@ -823,7 +840,7 @@ class Workflow(WorkflowManager):
 
         global_output_dir = state.get("global_output_dir")
         if global_output_dir:
-            st.caption(f"Copied output folder to global result-files: `{global_output_dir}`")
+            st.caption(f"Output files are available for download from the Results page.")
 
     def _tool_name(self, executable: str) -> str:
         local_path = Path.cwd() / executable
