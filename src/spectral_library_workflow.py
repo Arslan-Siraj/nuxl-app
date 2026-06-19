@@ -36,7 +36,7 @@ class Workflow(WorkflowManager):
 
     - mzML/raw files are synced from <workspace>/mzML-files
     - only NuXL idXML result files containing _perc_0.0100 are synced from <workspace>/result-files
-    - optional MSFragger TSV files are synced from <workspace>/result-files
+    - optional MSFragger TSV files can be uploaded directly on this workflow Upload page
     - generated library output files are copied directly to <workspace>/result-files
     - after successful execution, a ZIP download button appears at the bottom
       of the execution page.
@@ -47,19 +47,70 @@ class Workflow(WorkflowManager):
 
     def upload(self) -> None:
         st.info(
-            "Files are uploaded globally. Click **Sync files from global workspace** "
-            "to make mzML/raw files, NuXL idXML results, and optional MSFragger TSV "
-            "files available for this DIA library workflow."
+            "mzML/raw files and NuXL idXML results are synced from the global workspace. "
+            "The optional MSFragger TSV library can be uploaded directly on this page."
         )
 
-        if st.button("Sync files from global workspace", type="primary"):
+        if st.button("Sync mzML/raw and NuXL idXML files from global workspace", type="primary"):
             self._sync_global_input_files()
-            st.success("Files synced into workflow input folders.")
+            st.success("mzML/raw and NuXL idXML files synced into workflow input folders.")
             st.rerun()
 
         self._show_synced_files("mzML-files", "MS files synced from global mzML-files")
         self._show_synced_files("idXML-files", "NuXL _perc_0.0100 idXML files synced from global result-files")
-        self._show_synced_files("msfragger-library", "Optional TSV files synced from global result-files")
+
+        st.divider()
+        st.markdown("##### Optional MSFragger TSV library for iRT alignment")
+        self._upload_optional_msfragger_tsv()
+        self._show_synced_files("msfragger-library", "Available optional MSFragger TSV files")
+
+    def _upload_optional_msfragger_tsv(self) -> None:
+        target_dir = Path(self.workflow_dir, "input-files", "msfragger-library")
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        uploaded_files = st.file_uploader(
+            "Upload optional MSFragger library TSV file",
+            type=["tsv"],
+            accept_multiple_files=True,
+            help=(
+                "Optional. Upload a library TSV only if you want to use it as "
+                "the iRT reference for DIA library generation."
+            ),
+            key="dia-msfragger-library-tsv-upload",
+        )
+
+        if uploaded_files:
+            saved_files = []
+
+            for uploaded_file in uploaded_files:
+                target_file = target_dir / uploaded_file.name
+                with open(target_file, "wb") as handle:
+                    handle.write(uploaded_file.getbuffer())
+                saved_files.append(uploaded_file.name)
+
+            st.success(
+                "Uploaded optional MSFragger TSV file(s): "
+                + ", ".join(saved_files)
+            )
+
+        existing_tsv_files = [
+            file
+            for file in sorted(target_dir.iterdir())
+            if file.is_file()
+            and file.name != "external_files.txt"
+            and file.suffix.lower() == ".tsv"
+        ]
+
+        if existing_tsv_files:
+            if st.button(
+                "Clear optional MSFragger TSV files",
+                type="secondary",
+                key="clear-dia-msfragger-tsv-files",
+            ):
+                for file in existing_tsv_files:
+                    file.unlink()
+                st.success("Optional MSFragger TSV files cleared.")
+                st.rerun()
 
     def _sync_global_input_files(self) -> None:
         self._copy_global_folder_to_workflow_input(
@@ -73,12 +124,6 @@ class Workflow(WorkflowManager):
             workflow_key="idXML-files",
             allowed_suffixes={".idxml"},
             file_filter=self._is_valid_library_idxml_name,
-        )
-
-        self._copy_global_folder_to_workflow_input(
-            global_folder_name="result-files",
-            workflow_key="msfragger-library",
-            allowed_suffixes={".tsv"},
         )
 
     def _copy_global_folder_to_workflow_input(
@@ -840,7 +885,7 @@ class Workflow(WorkflowManager):
 
         global_output_dir = state.get("global_output_dir")
         if global_output_dir:
-            st.caption(f"Output files are available for download from the Results page.")
+            st.caption(f"Output files can be downloaded from Output page")
 
     def _tool_name(self, executable: str) -> str:
         local_path = Path.cwd() / executable

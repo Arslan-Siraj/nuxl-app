@@ -935,7 +935,10 @@ class Workflow(WorkflowManager):
                 type="primary",
                 use_container_width=True,
             )
-
+            
+        if files:   
+           st.caption(f"Output files can be downloaded from Output page")
+            
     def _copy_results_to_global_result_files(self, workflow_result_dir: Path) -> None:
         """
         Copy all generated NuXL files to the global NuXLApp result folder:
