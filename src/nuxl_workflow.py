@@ -1,7 +1,9 @@
 import ast
+import json
 import os
 import shutil
 import textwrap
+import zipfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
@@ -116,6 +118,15 @@ class Workflow(WorkflowManager):
 
     def __init__(self) -> None:
         super().__init__("NuXL Workflow", st.session_state["workspace"])
+
+    def show_execution_section(self) -> None:
+        """
+        Render the standard WorkflowManager execution section and, after a
+        successful NuXL run, show the download link directly at the bottom of
+        the execution page.
+        """
+        super().show_execution_section()
+        self._render_latest_nuxl_download_link()
 
     def upload(self) -> None:
         st.info(
@@ -568,7 +579,7 @@ class Workflow(WorkflowManager):
                 database_file=database[0],
                 success=False,
             )
-            self._copy_results_to_global_result_files(result_dir)
+            self._clear_latest_nuxl_download_state(result_dir)
             return False
 
         self._move_ambiguous_mass_file_to_results(
@@ -577,7 +588,7 @@ class Workflow(WorkflowManager):
             result_dir=result_dir,
         )
 
-        self._write_search_parameter_log(
+        log_file_path = self._write_search_parameter_log(
             result_dir=result_dir,
             protocol_name=protocol_name,
             mzml_file=in_ms[0],
@@ -586,6 +597,11 @@ class Workflow(WorkflowManager):
         )
 
         self._copy_results_to_global_result_files(result_dir)
+        self._create_latest_nuxl_download_zip(
+            result_dir=result_dir,
+            protocol_name=protocol_name,
+            log_file_path=log_file_path,
+        )
 
         self.logger.log("NuXL search completed successfully.")
         return True
@@ -791,15 +807,143 @@ class Workflow(WorkflowManager):
                 self.logger.log(f"Moved ambiguous masses file to results: {target}")
                 return
 
+    def _latest_nuxl_download_state_file(self) -> Path:
+        return Path(self.workflow_dir, "results", "nuxl-search", "latest_nuxl_download.json")
+
+    def _clear_latest_nuxl_download_state(self, result_dir: Path) -> None:
+        state_file = self._latest_nuxl_download_state_file()
+        if state_file.exists():
+            state_file.unlink()
+
+        for zip_file in result_dir.glob("*_XL_identification_files.zip"):
+            zip_file.unlink(missing_ok=True)
+
+    def _create_latest_nuxl_download_zip(
+        self,
+        result_dir: Path,
+        protocol_name: str,
+        log_file_path: Path,
+    ) -> None:
+        """
+        Create the ZIP file that will be shown as a download button at the
+        bottom of the execution page after a successful NuXL run.
+        """
+        all_files = [
+            file.name
+            for file in sorted(result_dir.iterdir())
+            if file.is_file()
+            and not file.name.endswith("_XL_identification_files.zip")
+            and file.name != self._latest_nuxl_download_state_file().name
+        ]
+
+        current_analysis_files = [
+            file_name
+            for file_name in all_files
+            if protocol_name in file_name
+        ]
+
+        perc_exec = any("_perc_" in file_name for file_name in current_analysis_files)
+
+        if perc_exec:
+            identification_files = [
+                file_name
+                for file_name in current_analysis_files
+                if (
+                    "_perc_0.0100_XLs" in file_name
+                    or "_perc_0.1000_XLs" in file_name
+                    or "_perc_1.0000_XLs" in file_name
+                    or "_perc_proteins" in file_name
+                )
+            ]
+        else:
+            identification_files = [
+                file_name
+                for file_name in current_analysis_files
+                if "_XLs" in file_name or "_proteins" in file_name
+            ]
+
+        if log_file_path.exists() and log_file_path.name not in identification_files:
+            identification_files.append(log_file_path.name)
+
+        valid_files = [
+            result_dir / file_name
+            for file_name in identification_files
+            if (result_dir / file_name).exists()
+        ]
+
+        if not valid_files:
+            self.logger.log("No NuXL identification files were found for ZIP download.")
+            return
+
+        zip_path = result_dir / f"{protocol_name}_XL_identification_files.zip"
+        if zip_path.exists():
+            zip_path.unlink()
+
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_handle:
+            for file_path in valid_files:
+                zip_handle.write(file_path, arcname=file_path.name)
+
+        state_file = self._latest_nuxl_download_state_file()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        state = {
+            "protocol_name": protocol_name,
+            "zip_path": str(zip_path),
+            "zip_name": zip_path.name,
+            "files": [file_path.name for file_path in valid_files],
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+        }
+        state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+        self.logger.log(f"Prepared NuXL identification ZIP download: {zip_path}")
+
+    def _render_latest_nuxl_download_link(self) -> None:
+        """
+        Render the latest successful NuXL identification ZIP download at the
+        bottom of the workflow execution page.
+        """
+        state_file = self._latest_nuxl_download_state_file()
+        if not state_file.exists():
+            return
+
+        try:
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+        except Exception:
+            return
+
+        zip_path = Path(state.get("zip_path", ""))
+        if not zip_path.exists():
+            return
+
+        st.divider()
+        st.success("NuXL analysis completed successfully.")
+
+        files = state.get("files", [])
+        if files:
+            st.dataframe(
+                pd.DataFrame(
+                    {"NuXL output identification files included in ZIP": files}
+                ),
+                use_container_width=True,
+            )
+
+        with open(zip_path, "rb") as handle:
+            st.download_button(
+                label=f"⬇️ Download {state.get('protocol_name', 'NuXL')}_XL_identification_files",
+                data=handle,
+                file_name=state.get("zip_name", zip_path.name),
+                mime="application/zip",
+                type="primary",
+                use_container_width=True,
+            )
+
     def _copy_results_to_global_result_files(self, workflow_result_dir: Path) -> None:
         """
-        Copy all files generated in the workflow-local NuXL result directory to
-        the global NuXLApp result folder:
+        Copy all generated NuXL files to the global NuXLApp result folder:
 
             <workspace>/result-files
 
-        Do not use st.session_state here because execution can run in a workflow
-        process where Streamlit session state is not available.
+        Existing files with the same name are overwritten; unrelated previous
+        result files are not deleted.
         """
         global_result_dir = Path(self.workflow_dir).parent / "result-files"
         global_result_dir.mkdir(parents=True, exist_ok=True)
@@ -808,6 +952,9 @@ class Workflow(WorkflowManager):
 
         for source_file in sorted(workflow_result_dir.iterdir()):
             if not source_file.is_file():
+                continue
+
+            if source_file.name == self._latest_nuxl_download_state_file().name:
                 continue
 
             target_file = global_result_dir / source_file.name
@@ -833,7 +980,7 @@ class Workflow(WorkflowManager):
         mzml_file: str,
         database_file: str,
         success: bool,
-    ) -> None:
+    ) -> Path:
         time_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file_path = result_dir / f"{protocol_name}_nuxl_search_parameters_{time_stamp}.txt"
 
@@ -884,3 +1031,4 @@ class Workflow(WorkflowManager):
             handle.write(search_param)
 
         self.logger.log(f"Wrote NuXL parameter log: {log_file_path}")
+        return log_file_path
