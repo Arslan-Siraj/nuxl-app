@@ -415,33 +415,41 @@ class Workflow(WorkflowManager):
 
         lines = [
             (
-                f"The protein-nucleic acid rescoring workflow run in **{app_name}**"
+                f"The protein–nucleic acid rescoring workflow runs in **{app_name}**"
                 f"{f' ([{url}]({url}))' if url else ''}, "
                 "a web application based on the OpenMS WebApps framework [1]."
             ),
             "",
-            "The rescoring workflow implements a rescoring pipeline for "
-            f"protein–nucleic acid cross-links: {rescore_url} [2]. "
-            "Rescoring refers to the post-processing of initial identification results to improve discrimination between correct and incorrect matches by incorporating additional evidence, such as predicted retention time or fragment ion intensities. "
-            "Such approaches have been shown to increase identification confidence and reduce false discovery rates in complex proteomics and cross-linking mass spectrometry analyses [2].",
-            "",
-
             (
-                    '[1] Müller, Tom David, et al. "OpenMS WebApps: Building User-Friendly '
-                    'Solutions for MS Analysis." (2025) '
-                    "[https://doi.org/10.1021/acs.jproteome.4c00872]"
-                    "(https://doi.org/10.1021/acs.jproteome.4c00872)."
-                ),
-                "",
-                (
-                    '[2] Siraj, Arslan, et al. "Intensity and retention time prediction improves the rescoring of protein‐nucleic acid cross‐links." '
-                    '(2024) '
-                    "[https://doi.org/10.1002/pmic.202300144]"
-                    "(https://doi.org/10.1002/pmic.202300144)."
-                ),
-
+                "This workflow takes NuXL search-engine output from protein–nucleic acid "
+                "cross-link identification [2] and adapts a data-driven rescoring pipeline "
+                f"using predicted retention time and fragment-ion intensity features: {rescore_url} [3]. "
+                "These additional features improve discrimination between correct and incorrect "
+                "matches and can increase identification confidence with Percolator."
+            ),
             "",
-
+            (
+                '[1] Müller, Tom David, et al. "OpenMS WebApps: Building User-Friendly '
+                'Solutions for MS Analysis." (2025). '
+                "[https://doi.org/10.1021/acs.jproteome.4c00872]"
+                "(https://doi.org/10.1021/acs.jproteome.4c00872)."
+            ),
+            "",
+            (
+                '[2] Welp, et al. "Chemical crosslinking extends and complements UV '
+                'crosslinking in analysis of RNA/DNA nucleic acid–protein interaction '
+                'sites by mass spectrometry." (2025). '
+                "[https://doi.org/10.1093/nar/gkaf727]"
+                "(https://doi.org/10.1093/nar/gkaf727)."
+            ),
+            "",
+            (
+                '[3] Siraj, Arslan, et al. "Intensity and retention time prediction improves '
+                'the rescoring of protein‐nucleic acid cross‐links." (2024). '
+                "[https://doi.org/10.1002/pmic.202300144]"
+                "(https://doi.org/10.1002/pmic.202300144)."
+            ),
+            "",
             "**Rescoring parameters**",
         ]
 

@@ -333,6 +333,8 @@ class Workflow(WorkflowManager):
         )
 
     def show_execution_section(self) -> None:
+        self.ui.export_parameters_markdown = self._safe_export_parameters_markdown
+
         self.ui.execution_section(
             start_workflow_function=self.start_workflow,
             get_status_function=self.get_workflow_status,
@@ -931,4 +933,72 @@ class Workflow(WorkflowManager):
             return str(local_path)
         return executable
     
-    
+    def _safe_export_parameters_markdown(self) -> str:
+        params = self.parameter_manager.get_parameters_from_json()
+
+        library_name = str(params.get("library_name", "")).strip()
+        if not library_name:
+            library_name = "auto timestamped name"
+
+        ms_files = params.get("mzML-files", [])
+        if isinstance(ms_files, str):
+            ms_files = [ms_files]
+
+        ms_file_names = [
+            Path(str(file)).name
+            for file in ms_files
+        ] or ["not selected"]
+
+        msfragger_library = params.get("msfragger-library", "None")
+        if not msfragger_library:
+            msfragger_library = "None"
+
+        run_fileinfo = params.get("run_fileinfo", True)
+        irt_model = params.get("irt_calibration_model", "linear")
+
+        url = f"https://github.com/{st.session_state.settings['github-user']}/{st.session_state.settings['repository-name']}"
+        app_name = st.session_state.settings.get("app-name", "NuXLApp")
+        DIA_library_generation_url = "https://github.com/timosachsenberg/NuXLDIA"
+
+        lines = [
+            (
+                f"The DIA library generation workflow runs in **{app_name}**"
+                f"{f' ([{url}]({url}))' if url else ''}, "
+                "a web application based on the OpenMS WebApps framework [1]."
+            ),
+            "",
+            (
+                "This workflow converts NuXL DDA identification results into a DIA-NN-compatible "
+                "spectral library [2]. It uses NuXL crosslinks at 1% CSM-level FDR and "
+                "linear peptide identifications at 1% PSM-level FDR, removes decoys, filters "
+                "localized crosslinks, removes redundant precursors, reformats modified "
+                "sequences for DIA-NN, keeps b/y fragment ions, and optionally performs iRT "
+                f"alignment using an uploaded MSFragger library. NuXLDIA: {DIA_library_generation_url}."
+            ),
+            "",
+            (
+                '[1] Müller, Tom David, et al. "OpenMS WebApps: Building User-Friendly '
+                'Solutions for MS Analysis." (2025). '
+                "[https://doi.org/10.1021/acs.jproteome.4c00872]"
+                "(https://doi.org/10.1021/acs.jproteome.4c00872)."
+            ),
+            "",
+            (
+                '[2] Welp, et al. "Chemical crosslinking extends and complements UV '
+                'crosslinking in analysis of RNA/DNA nucleic acid–protein interaction '
+                'sites by mass spectrometry." (2025). '
+                "[https://doi.org/10.1093/nar/gkaf727]"
+                "(https://doi.org/10.1093/nar/gkaf727)."
+            ),
+            "",
+            "**Spectra Library generation parameters**",
+            "",
+            f"> MS file(s): **{', '.join(ms_file_names)}**",
+            "> NuXL idXML files: **matched automatically from workspace result-files**",
+            f"> Optional MSFragger iRT library: **{Path(str(msfragger_library)).name if msfragger_library != 'None' else 'None'}**",
+            f"> Library output name: **{library_name}**",
+            f"> iRT calibration model: **{irt_model}**",
+            f"> Run mzML FileInfo: **{run_fileinfo}**",
+            "",
+        ]
+        return "\n".join(lines)

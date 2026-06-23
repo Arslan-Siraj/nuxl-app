@@ -1615,7 +1615,7 @@ Started: {status.get('started_at', 'N/A')}""")
                     markdown.append(f">> {key}: **{value}**\n")
 
         if len(general) > 0:
-            markdown.append("**General**")
+            markdown.append("**Parameters**")
             dict_to_markdown(general)
         if len(topp) > 0:
             markdown.append("**OpenMS TOPP Tools**\n")
@@ -1644,7 +1644,7 @@ Started: {status.get('started_at', 'N/A')}""")
         markdown.append(
             f"""Data was processed using **{st.session_state.settings['app-name']}** ([{url}]({url})), a web application based on the OpenMS WebApps framework [1].
 OpenMS ([https://www.openms.de](https://www.openms.de)) is a free and open-source software for LC-MS data analysis [2].
-The protein-RNA/DNA samples are analysed with NuXL search engine version **OpenMS {NuXL_app_v}** Tag **NuXLApp** [3]. Non-default parameters are listed in the supplementary section below.
+The protein-RNA/DNA samples are analysed with NuXL search engine version **OpenMS {NuXL_app_v}** Tag **NuXLApp** [3].
 
 [1] Müller, Tom David, et al. "OpenMS WebApps: Building User-Friendly Solutions for MS Analysis." (2025) [https://doi.org/10.1021/acs.jproteome.4c00872](https://doi.org/10.1021/acs.jproteome.4c00872).
 
