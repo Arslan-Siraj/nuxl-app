@@ -387,29 +387,6 @@ class Workflow(WorkflowManager):
                 help="Generate a pseudo-ROC comparison plot when reference files are available.",
             )
 
-        self.ui.input_widget(
-            key="rescoring_threads",
-            default=1,
-            name="Rescoring worker threads",
-            widget_type="number",
-            min_value=1,
-            max_value=4,
-            step_size=1,
-            help=(
-                "Keep this at 1 on Windows when using DeepLC/TensorFlow. "
-                "Higher values can spawn many TensorFlow workers and exhaust "
-                "the Windows paging file."
-            ),
-        )
-
-        with st.expander("Resource paths", expanded=False):
-            resource_dir = self._resource_dir()
-            st.write(f"Resources will be stored in: `{resource_dir}`")
-            st.caption(
-                "If the resource directory is empty, the workflow downloads "
-                "the NuXL rescoring resource ZIP during execution."
-            )
-
     def show_execution_section(self) -> None:
         """
         Render the normal execution section, but avoid StreamlitUI's default
@@ -431,14 +408,41 @@ class Workflow(WorkflowManager):
     def _safe_export_parameters_markdown(self) -> str:
         params = self.parameter_manager.get_parameters_from_json()
 
+        rescore_url = "https://github.com/Arslan-Siraj/NuXL_rescore"
+
+        url = f"https://github.com/{st.session_state.settings['github-user']}/{st.session_state.settings['repository-name']}"
+        app_name = st.session_state.settings.get("app-name", "NuXLApp")
+
         lines = [
-            "Data will be processed using **NuXLApp**.",
+            (
+                f"The protein-nucleic acid rescoring workflow run in **{app_name}**"
+                f"{f' ([{url}]({url}))' if url else ''}, "
+                "a web application based on the OpenMS WebApps framework [1]."
+            ),
             "",
-            "The workflow performs NuXL rescoring with the selected idXML file, "
-            "user-selected MGF input for max-correlation features, and the selected rescoring "
-            "feature settings.",
+            "The rescoring workflow implements a rescoring pipeline for "
+            f"protein–nucleic acid cross-links: {rescore_url} [2]. "
+            "Rescoring refers to the post-processing of initial identification results to improve discrimination between correct and incorrect matches by incorporating additional evidence, such as predicted retention time or fragment ion intensities. "
+            "Such approaches have been shown to increase identification confidence and reduce false discovery rates in complex proteomics and cross-linking mass spectrometry analyses [2].",
             "",
-            "**Current parameters**",
+
+            (
+                    '[1] Müller, Tom David, et al. "OpenMS WebApps: Building User-Friendly '
+                    'Solutions for MS Analysis." (2025) '
+                    "[https://doi.org/10.1021/acs.jproteome.4c00872]"
+                    "(https://doi.org/10.1021/acs.jproteome.4c00872)."
+                ),
+                "",
+                (
+                    '[2] Siraj, Arslan, et al. "Intensity and retention time prediction improves the rescoring of protein‐nucleic acid cross‐links." '
+                    '(2024) '
+                    "[https://doi.org/10.1002/pmic.202300144]"
+                    "(https://doi.org/10.1002/pmic.202300144)."
+                ),
+
+            "",
+
+            "**Rescoring parameters**",
         ]
 
         if not params:
@@ -548,14 +552,10 @@ class Workflow(WorkflowManager):
         os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
         os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-        rescoring_threads = max(1, int(self.params.get("rescoring_threads", 1)))
-        args.extend(["-nthreads", str(rescoring_threads)])
-
         self.logger.log(f"Rescoring idXML file: {idxml_file}")
         self.logger.log(f"Protocol: {protocol}")
         self.logger.log(f"Retention-time features: {retention_time_features}")
         self.logger.log(f"Max-correlation features: {max_correlation_features}")
-        self.logger.log(f"Rescoring worker threads: {rescoring_threads}")
         self.logger.log(f"Resolved NuXL-rescore command prefix: {self._nuxl_rescore_command_prefix()}")
         self.logger.log(f"Resolved Percolator: {self._percolator_path()}")
         self.logger.log(f"Resolved PercolatorAdapter: {self._percolator_adapter_path()}")

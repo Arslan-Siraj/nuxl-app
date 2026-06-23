@@ -930,3 +930,5 @@ class Workflow(WorkflowManager):
         if os.name == "nt" and local_path.exists():
             return str(local_path)
         return executable
+    
+    

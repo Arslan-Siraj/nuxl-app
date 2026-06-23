@@ -1640,14 +1640,20 @@ Started: {status.get('started_at', 'N/A')}""")
         if result.returncode == 0:
             version = result.stderr.split("Version: ")[1].split("-")[0]
 
+        NuXL_app_v = "develop-branch-41ce6cf"
         markdown.append(
             f"""Data was processed using **{st.session_state.settings['app-name']}** ([{url}]({url})), a web application based on the OpenMS WebApps framework [1].
 OpenMS ([https://www.openms.de](https://www.openms.de)) is a free and open-source software for LC-MS data analysis [2].
-The workflow includes the **OpenMS {version}** TOPP tools {tools} as well as Python scripts. Non-default parameters are listed in the supplementary section below.
+The protein-RNA/DNA samples are analysed with NuXL search engine version **OpenMS {NuXL_app_v}** Tag **NuXLApp** [3]. Non-default parameters are listed in the supplementary section below.
 
 [1] Müller, Tom David, et al. "OpenMS WebApps: Building User-Friendly Solutions for MS Analysis." (2025) [https://doi.org/10.1021/acs.jproteome.4c00872](https://doi.org/10.1021/acs.jproteome.4c00872).
-\\
+
+
 [2] Pfeuffer, Julianus, et al. "OpenMS 3 enables reproducible analysis of large-scale mass spectrometry data." (2024) [https://doi.org/10.1038/s41592-024-02197-7](https://doi.org/10.1038/s41592-024-02197-7).
+
+
+[3] Welp, et al. "Chemical crosslinking extends and complements UV crosslinking in analysis of RNA/DNA nucleic acid–protein interaction sites by mass spectrometry." (2025) [https://doi.org/10.1093/nar/gkaf727](https://doi.org/10.1093/nar/gkaf727)
+
 """
         )
         markdown.append(self.non_default_params_summary())
