@@ -6,7 +6,9 @@ params = page_setup()
 
 wf = Workflow()
 
-st.title('NuXL Search Engine')
+st.title('⚙️ Run NuXL Search Engine', 
+         help="Run NuXL search engine to analyze protein-RNA/DNA cross-linking samples. ref: https://doi.org/10.1093/nar/gkaf727"
+        )
 
 t = st.tabs(["📁 **Files**", "⚙️ **Configure**", "🚀 **Run**"])
 with t[0]:

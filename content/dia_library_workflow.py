@@ -6,7 +6,9 @@ params = page_setup()
 
 wf = Workflow()
 
-st.title('DIA Library Generation')
+st.title("⚙️ Spectral library generation", 
+         help="Generate spectral libraries from identification results for DIA analysis. Used OpenNuXL identification files. ref: https://github.com/timosachsenberg/NuXLDIA"
+        )
 
 t = st.tabs(["📁 **File Upload**", "⚙️ **Configure**", "🚀 **Run**"])
 with t[0]:
