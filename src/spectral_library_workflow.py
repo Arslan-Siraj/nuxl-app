@@ -47,22 +47,52 @@ class Workflow(WorkflowManager):
 
     def upload(self) -> None:
         st.info(
-            "mzML/raw files and NuXL idXML results are synced from the global workspace. "
-            "The optional MSFragger TSV library can be uploaded directly on this page."
+            "Click **Sync files from workspace** "
+            "to make the current workspace files available for this workflow."
         )
 
-        if st.button("Sync mzML/raw and NuXL idXML files from global workspace", type="primary"):
+        if st.button("Sync files from workspace", type="primary"):
             self._sync_global_input_files()
             st.success("mzML/raw and NuXL idXML files synced into workflow input folders.")
             st.rerun()
 
-        self._show_synced_files("mzML-files", "MS files synced from global mzML-files")
-        self._show_synced_files("idXML-files", "NuXL _perc_0.0100 idXML files synced from global result-files")
+        self._show_synced_files(
+            "mzML-files",
+            "MS files",
+            help_text=(
+                "Available `.mzML` files in workspace. "
+                "Select the MS files later in the Configure tab for libray generation. "
+            ),
+        )
+
+        self._show_synced_files(
+            "idXML-files",
+            "idXML files",
+            help_text=(
+                "Available idXML files in workspace. "
+                "Only NuXL Percolator out 1% idXML files containing `_perc_0.0100` are shown. "
+                "For each selected MS file, the workflow automatically expects the matching "
+                "`_perc_0.0100_XLs.idXML` and `_perc_0.0100_peptides.idXML` files."
+            ),
+        )
 
         st.divider()
         st.markdown("##### Optional MSFragger TSV library for iRT alignment")
+        st.caption(
+            "Optional. Upload an MSFragger `.tsv` library for the iRT reference for alignment. If no TSV is selected, DIA library "
+            "generation still runs without iRT reference alignment."
+        )
+
         self._upload_optional_msfragger_tsv()
-        self._show_synced_files("msfragger-library", "Available optional MSFragger TSV files")
+
+        self._show_synced_files(
+            "msfragger-library",
+            "MSFragger library files",
+            help_text=(
+                "Uploaded `.tsv` files available for optional iRT alignment. "
+                "Choose one later in the Configure tab, or choose `None` to skip iRT alignment."
+            ),
+        )
 
     def _upload_optional_msfragger_tsv(self) -> None:
         target_dir = Path(self.workflow_dir, "input-files", "msfragger-library")
@@ -116,7 +146,7 @@ class Workflow(WorkflowManager):
         self._copy_global_folder_to_workflow_input(
             global_folder_name="mzML-files",
             workflow_key="mzML-files",
-            allowed_suffixes={".mzml", ".raw"},
+            allowed_suffixes={".mzml"},
         )
 
         self._copy_global_folder_to_workflow_input(
@@ -183,13 +213,21 @@ class Workflow(WorkflowManager):
                     encoding="utf-8",
                 )
 
-    def _show_synced_files(self, workflow_key: str, title: str) -> None:
+    def _show_synced_files(
+        self,
+        workflow_key: str,
+        title: str,
+        help_text: str | None = None,
+    ) -> None:
         input_dir = Path(self.workflow_dir, "input-files", workflow_key)
 
         st.markdown(f"##### {title}")
 
+        if help_text:
+            st.caption(help_text)
+
         if not input_dir.exists():
-            st.warning("No synced files yet.")
+            st.warning("No files available yet.")
             return
 
         files = [
@@ -207,7 +245,7 @@ class Workflow(WorkflowManager):
             )
 
         if not files:
-            st.warning("No synced files yet.")
+            st.warning("No files available yet.")
             return
 
         st.dataframe(pd.DataFrame({"file": files}), use_container_width=True)
@@ -885,7 +923,7 @@ class Workflow(WorkflowManager):
 
         global_output_dir = state.get("global_output_dir")
         if global_output_dir:
-            st.caption(f"Output files can be downloaded from Output page")
+            st.caption(f"Copied library output files directly to global result-files: `{global_output_dir}`")
 
     def _tool_name(self, executable: str) -> str:
         local_path = Path.cwd() / executable

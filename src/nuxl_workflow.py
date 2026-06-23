@@ -130,19 +130,32 @@ class Workflow(WorkflowManager):
 
     def upload(self) -> None:
         st.info(
-            "Files are uploaded globally. Click **Sync files from global workspace** "
+            "Click **Sync files from workspace** "
             "to make the current workspace files available for this workflow."
         )
 
-        if st.button("Sync files from global workspace", type="primary"):
+        if st.button("Sync files from workspace", type="primary"):
             self._sync_global_input_files()
             st.success("Files synced into workflow input folders.")
             st.rerun()
 
-        self._show_synced_files("mzML-files", "MS files")
-        self._show_synced_files("fasta-files", "FASTA databases")
+        self._show_synced_files(
+            "mzML-files",
+            "MS files",
+            help_text=(
+                "Available `.mzML` or `.raw` files in workspace."
+            ),
+        )
+        self._show_synced_files(
+            "fasta-files",
+            "FASTA databases",
+            help_text=(
+                "Available `.fasta` protein databases in workspace."
+            ),
+        )
     
     def _sync_global_input_files(self) -> None:
+        
         self._copy_global_folder_to_workflow_input(
             global_folder_name="mzML-files",
             workflow_key="mzML-files",
@@ -197,10 +210,18 @@ class Workflow(WorkflowManager):
                     encoding="utf-8",
                 )
 
-    def _show_synced_files(self, workflow_key: str, title: str) -> None:
+    def _show_synced_files(
+        self,
+        workflow_key: str,
+        title: str,
+        help_text: str | None = None,
+    ) -> None:
         input_dir = Path(self.workflow_dir, "input-files", workflow_key)
 
         st.markdown(f"##### {title}")
+
+        if help_text:
+            st.caption(help_text)
 
         if not input_dir.exists():
             st.warning("No synced files yet.")
@@ -935,10 +956,7 @@ class Workflow(WorkflowManager):
                 type="primary",
                 use_container_width=True,
             )
-            
-        if files:   
-           st.caption(f"Output files can be downloaded from Output page")
-            
+
     def _copy_results_to_global_result_files(self, workflow_result_dir: Path) -> None:
         """
         Copy all generated NuXL files to the global NuXLApp result folder:

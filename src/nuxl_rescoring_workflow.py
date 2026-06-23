@@ -1,4 +1,4 @@
-
+import json
 import os
 import shutil
 import sys
@@ -39,33 +39,270 @@ class Workflow(WorkflowManager):
     """
     NuXL rescoring workflow.
 
-    The workflow uses one initial NuXL idXML file as input. If max-correlation
-    features are enabled, an MGF file with the same stem is required; when only
-    the corresponding mzML file is present, FileConverter is used to generate
-    the MGF file automatically.
+    - Valid initial NuXL idXML files are synced from <workspace>/result-files.
+    - The synced idXML list excludes _perc_, 0.0100, 0.1000, 1.0000,
+      RT_feat, RT_Int_feat, updated_feat, and _sse_perc_ files.
+    - MGF files are uploaded to <workspace>/mzML-files, synced into this workflow, and selected by the user.
+    - Rescoring outputs are copied directly to <workspace>/result-files.
+    - After successful execution, a ZIP download button appears at the bottom
+      of the execution page.
     """
 
     def __init__(self) -> None:
         super().__init__("NuXL Rescoring Workflow", st.session_state["workspace"])
 
     def upload(self) -> None:
-        tabs = st.tabs(["NuXL idXML files", "MS data for max-correlation features"])
+        st.info(
+            "Click **Sync files from workspace** "
+            "to make the current workspace files available for this workflow."
+        )
 
-        with tabs[0]:
-            self.ui.upload_widget(
-                key="idXML-files",
-                name="NuXL idXML files",
-                file_types=["idXML"],
-                fallback=None,
+        if st.button("Sync files from workspace", type="primary"):
+            self._sync_global_idxml_files()
+            self._sync_global_mgf_files()
+            st.success("Valid initial idXML files and MGF files synced into workflow input folders.")
+            st.rerun()
+
+        self._show_available_files(
+            key="idXML-files",
+            title="idXML files",
+            allowed_suffixes={".idxml"},
+            help_text=(
+                "Initial NuXL search out `.idXML` files available in workspace."
+                " These files are NuXL out before percolator apply and FDR estimation."
+            ),
+        )
+
+        st.divider()
+        st.markdown("##### MGF files for max-correlation features")
+        st.caption(
+            "Uploading `.mgf` here uploads the file "
+            "to workspace and also makes it available in this workflow. "
+            "Select the required `.mgf` file manually in the Configure tab."
+        )
+        self._upload_mgf_files()
+        self._show_available_files(
+            key="ms-files",
+            title="MGF files",
+            allowed_suffixes={".mgf"},
+            help_text=(
+                "Available MGF files in workspace. "
+            ),
+        )
+
+    def _sync_global_idxml_files(self) -> None:
+        workspace_dir = Path(self.workflow_dir).parent
+        source_dir = workspace_dir / "result-files"
+        target_dir = Path(self.workflow_dir, "input-files", "idXML-files")
+
+        source_dir.mkdir(parents=True, exist_ok=True)
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        for old_file in target_dir.iterdir():
+            if old_file.is_file():
+                old_file.unlink()
+
+        for source_file in sorted(source_dir.iterdir()):
+            if not source_file.is_file():
+                continue
+
+            if source_file.name == "external_files.txt":
+                continue
+
+            if source_file.suffix.lower() != ".idxml":
+                continue
+
+            if not self._is_valid_initial_idxml_name(source_file.name):
+                continue
+
+            shutil.copy2(source_file, target_dir / source_file.name)
+
+        external_file = source_dir / "external_files.txt"
+        if external_file.exists():
+            target_external_file = target_dir / "external_files.txt"
+            lines_to_keep: list[str] = []
+
+            for line in external_file.read_text(encoding="utf-8").splitlines():
+                path = Path(line.strip())
+
+                if (
+                    path.exists()
+                    and path.suffix.lower() == ".idxml"
+                    and self._is_valid_initial_idxml_name(path.name)
+                ):
+                    lines_to_keep.append(str(path))
+
+            if lines_to_keep:
+                target_external_file.write_text(
+                    "\n".join(lines_to_keep) + "\n",
+                    encoding="utf-8",
+                )
+
+    def _sync_global_mgf_files(self) -> None:
+        workspace_dir = Path(self.workflow_dir).parent
+        source_dir = workspace_dir / "mzML-files"
+        target_dir = Path(self.workflow_dir, "input-files", "ms-files")
+
+        source_dir.mkdir(parents=True, exist_ok=True)
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        # Remove only previously synced/copied MGF files from this workflow input.
+        # Directly uploaded MGF files with the same names can be overwritten by sync,
+        # but no non-MGF files are touched.
+        for old_file in target_dir.iterdir():
+            if old_file.is_file() and old_file.suffix.lower() == ".mgf":
+                old_file.unlink()
+
+        for source_file in sorted(source_dir.iterdir()):
+            if not source_file.is_file():
+                continue
+
+            if source_file.name == "external_files.txt":
+                continue
+
+            if source_file.suffix.lower() != ".mgf":
+                continue
+
+            shutil.copy2(source_file, target_dir / source_file.name)
+
+        external_file = source_dir / "external_files.txt"
+        if external_file.exists():
+            target_external_file = target_dir / "external_files.txt"
+            lines_to_keep: list[str] = []
+
+            # Preserve existing non-MGF external lines, if any.
+            if target_external_file.exists():
+                for line in target_external_file.read_text(encoding="utf-8").splitlines():
+                    path = Path(line.strip())
+                    if path.exists() and path.suffix.lower() != ".mgf":
+                        lines_to_keep.append(str(path))
+
+            for line in external_file.read_text(encoding="utf-8").splitlines():
+                path = Path(line.strip())
+
+                if path.exists() and path.suffix.lower() == ".mgf":
+                    lines_to_keep.append(str(path))
+
+            if lines_to_keep:
+                # Keep unique lines while preserving order.
+                unique_lines = list(dict.fromkeys(lines_to_keep))
+                target_external_file.write_text(
+                    "\n".join(unique_lines) + "\n",
+                    encoding="utf-8",
+                )
+            elif target_external_file.exists():
+                target_external_file.unlink()
+
+    def _upload_mgf_files(self) -> None:
+        workspace_dir = Path(self.workflow_dir).parent
+        global_mzml_dir = workspace_dir / "mzML-files"
+        target_dir = Path(self.workflow_dir, "input-files", "ms-files")
+
+        global_mzml_dir.mkdir(parents=True, exist_ok=True)
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        uploaded_files = st.file_uploader(
+            "Upload MGF files",
+            type=["mgf"],
+            accept_multiple_files=True,
+            help=(
+                "Required only when Max correlation features are enabled. "
+                "Uploaded MGF files are copied to the global mzML-files folder "
+                "and also made available in this workflow for selection."
+            ),
+            key="rescoring-mgf-upload",
+        )
+
+        if uploaded_files:
+            saved_files = []
+
+            for uploaded_file in uploaded_files:
+                global_file = self._unique_file_path(global_mzml_dir / uploaded_file.name)
+
+                with open(global_file, "wb") as handle:
+                    handle.write(uploaded_file.getbuffer())
+
+                workflow_file = target_dir / global_file.name
+                shutil.copy2(global_file, workflow_file)
+                saved_files.append(global_file.name)
+
+            st.success(
+                "Uploaded MGF file(s) to global mzML-files and this workflow: "
+                + ", ".join(saved_files)
             )
 
-        with tabs[1]:
-            self.ui.upload_widget(
-                key="ms-files",
-                name="MS data",
-                file_types=["mzML", "mgf"],
-                fallback=None,
+        existing_mgf_files = [
+            file
+            for file in sorted(target_dir.iterdir())
+            if file.is_file()
+            and file.name != "external_files.txt"
+            and file.suffix.lower() == ".mgf"
+        ]
+
+        if existing_mgf_files:
+            if st.button(
+                "Clear MGF files from this workflow input",
+                type="secondary",
+                key="clear-rescoring-mgf-files",
+            ):
+                for file in existing_mgf_files:
+                    file.unlink()
+
+                external_file = target_dir / "external_files.txt"
+                if external_file.exists():
+                    external_file.unlink()
+
+                st.success(
+                    "MGF files cleared from this workflow input. "
+                    "Global mzML-files were not deleted."
+                )
+                st.rerun()
+
+    def _show_available_files(
+        self,
+        key: str,
+        title: str,
+        allowed_suffixes: set[str],
+        help_text: str | None = None,
+    ) -> None:
+        input_dir = Path(self.workflow_dir, "input-files", key)
+
+        st.markdown(f"##### {title}")
+
+        if help_text:
+            st.caption(help_text)
+
+        if not input_dir.exists():
+            st.warning("No files available yet.")
+            return
+
+        files: list[str] = [
+            file.name
+            for file in sorted(input_dir.iterdir())
+            if file.is_file()
+            and file.name != "external_files.txt"
+            and file.suffix.lower() in allowed_suffixes
+        ]
+
+        external_file = input_dir / "external_files.txt"
+        if external_file.exists():
+            files.extend(
+                line.strip()
+                for line in external_file.read_text(encoding="utf-8").splitlines()
+                if line.strip() and Path(line.strip()).suffix.lower() in allowed_suffixes
             )
+
+        if not files:
+            st.warning("No files available yet.")
+            return
+
+        st.dataframe(pd.DataFrame({"file": files}), use_container_width=True)
+
+    def _is_valid_initial_idxml_name(self, file_name: str) -> bool:
+        if not file_name.lower().endswith(".idxml"):
+            return False
+
+        return not any(marker in file_name for marker in EXCLUDED_IDXML_MARKERS)
 
     @st.fragment
     def configure(self) -> None:
@@ -76,7 +313,7 @@ class Workflow(WorkflowManager):
         if not idxml_options:
             st.error(
                 "No valid initial NuXL `.idXML` files were found. "
-                "Upload the main NuXL search-engine idXML file first."
+                "Run NuXL first, then use the Upload tab to sync valid initial idXML files."
             )
         else:
             self.ui.input_widget(
@@ -86,6 +323,28 @@ class Workflow(WorkflowManager):
                 widget_type="selectbox",
                 options=idxml_options,
                 display_file_path=False,
+            )
+
+        mgf_files = self._all_uploaded_ms_files()
+        if mgf_files:
+            mgf_options = ["None"] + [str(p) for p in mgf_files]
+            self.ui.input_widget(
+                key="mgf-file",
+                default=mgf_options[1],
+                name="Choose MGF file for max-correlation features",
+                widget_type="selectbox",
+                options=mgf_options,
+                display_file_path=False,
+                help=(
+                    "Used only when Max correlation features are enabled. "
+                    "Select the MGF file manually."
+                ),
+            )
+        else:
+            st.info(
+                "Optional/required: upload an MGF file on the Upload page or "
+                "place it in global mzML-files, then sync, if Max correlation "
+                "features are enabled."
             )
 
         st.markdown("### Rescoring parameters")
@@ -128,6 +387,21 @@ class Workflow(WorkflowManager):
                 help="Generate a pseudo-ROC comparison plot when reference files are available.",
             )
 
+        self.ui.input_widget(
+            key="rescoring_threads",
+            default=1,
+            name="Rescoring worker threads",
+            widget_type="number",
+            min_value=1,
+            max_value=4,
+            step_size=1,
+            help=(
+                "Keep this at 1 on Windows when using DeepLC/TensorFlow. "
+                "Higher values can spawn many TensorFlow workers and exhaust "
+                "the Windows paging file."
+            ),
+        )
+
         with st.expander("Resource paths", expanded=False):
             resource_dir = self._resource_dir()
             st.write(f"Resources will be stored in: `{resource_dir}`")
@@ -136,8 +410,62 @@ class Workflow(WorkflowManager):
                 "the NuXL rescoring resource ZIP during execution."
             )
 
+    def show_execution_section(self) -> None:
+        """
+        Render the normal execution section, but avoid StreamlitUI's default
+        export_parameters_markdown() subprocess call.
+
+        On Windows, the default summary can spawn an extra OpenMS helper process
+        just to render the Summary box. If memory/pagefile is low, that can fail
+        before the workflow starts. Rescoring uses this lightweight summary instead.
+        """
+        self.ui.export_parameters_markdown = self._safe_export_parameters_markdown
+
+        self.ui.execution_section(
+            start_workflow_function=self.start_workflow,
+            get_status_function=self.get_workflow_status,
+            stop_workflow_function=self.stop_workflow,
+        )
+        self._render_latest_success_download()
+
+    def _safe_export_parameters_markdown(self) -> str:
+        params = self.parameter_manager.get_parameters_from_json()
+
+        lines = [
+            "Data will be processed using **NuXLApp**.",
+            "",
+            "The workflow performs NuXL rescoring with the selected idXML file, "
+            "user-selected MGF input for max-correlation features, and the selected rescoring "
+            "feature settings.",
+            "",
+            "**Current parameters**",
+        ]
+
+        if not params:
+            lines.append("> No parameters saved yet. Configure the workflow first.")
+            return "\n".join(lines)
+
+        for key, value in params.items():
+            if isinstance(value, (list, tuple)):
+                clean_value = ", ".join(
+                    Path(str(v)).name if Path(str(v)).exists() else str(v)
+                    for v in value
+                )
+            elif isinstance(value, dict):
+                clean_value = str(value)
+            else:
+                clean_value = Path(str(value)).name if Path(str(value)).exists() else str(value)
+
+            lines.append(f"> {key}: **{clean_value}**")
+
+        return "\n".join(lines)
+
     def execution(self) -> bool:
         self.params = self.parameter_manager.get_parameters_from_json()
+
+        # Refresh valid initial idXML files and global MGF files when the job starts.
+        self._sync_global_idxml_files()
+        self._sync_global_mgf_files()
 
         idxml_file = self.params.get("idXML-files")
         if not idxml_file:
@@ -155,12 +483,12 @@ class Workflow(WorkflowManager):
         plot_pseudoroc = bool(self.params.get("plot_pseudoroc", True))
 
         if not retention_time_features and not max_correlation_features:
-            self.logger.log(
-                "ERROR: Please select at least one feature type for rescoring."
-            )
+            self.logger.log("ERROR: Please select at least one feature type for rescoring.")
             return False
 
         result_dir = Path(self.workflow_dir, "results", "rescoring")
+        if result_dir.exists():
+            shutil.rmtree(result_dir)
         result_dir.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -178,14 +506,14 @@ class Workflow(WorkflowManager):
         id_stem = Path(idxml_file).stem
 
         original_100_xls = self._find_reference_idxml(
-            idxml_file,
-            f"{id_stem}_perc_1.0000_XLs.idXML",
-            result_dir,
+            selected_idxml_file=idxml_file,
+            reference_name=f"{id_stem}_perc_1.0000_XLs.idXML",
+            result_dir=result_dir,
         )
         original_1_xls = self._find_reference_idxml(
-            idxml_file,
-            f"{id_stem}_perc_0.0100_XLs.idXML",
-            result_dir,
+            selected_idxml_file=idxml_file,
+            reference_name=f"{id_stem}_perc_0.0100_XLs.idXML",
+            result_dir=result_dir,
         )
 
         args, expected_100_xls, expected_1_xls = self._build_rescore_command(
@@ -199,12 +527,10 @@ class Workflow(WorkflowManager):
         )
 
         if max_correlation_features:
-            mgf_path = self._ensure_mgf_for_idxml(idxml_file, result_dir)
+            mgf_path = self._ensure_mgf_for_idxml(idxml_file)
             if mgf_path is None:
                 self.logger.log(
-                    "ERROR: Max-correlation features require an MGF file, "
-                    "or an mzML file that can be converted to MGF, with the same "
-                    f"stem as the selected idXML file: {id_stem}"
+                    "ERROR: Max-correlation features require an MGF file selected in Configure."
                 )
                 return False
             args.extend(["-mgf", str(mgf_path)])
@@ -212,10 +538,24 @@ class Workflow(WorkflowManager):
         args.extend(["-perc_exe", self._percolator_path()])
         args.extend(["-perc_adapter", self._percolator_adapter_path()])
 
+        # Limit TensorFlow/NumPy thread fan-out. On Windows, DeepLC/TensorFlow
+        # can otherwise spawn many heavy worker processes and exhaust the paging file.
+        os.environ.setdefault("OMP_NUM_THREADS", "1")
+        os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+        os.environ.setdefault("MKL_NUM_THREADS", "1")
+        os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+        os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
+        os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
+        os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
+        rescoring_threads = max(1, int(self.params.get("rescoring_threads", 1)))
+        args.extend(["-nthreads", str(rescoring_threads)])
+
         self.logger.log(f"Rescoring idXML file: {idxml_file}")
         self.logger.log(f"Protocol: {protocol}")
         self.logger.log(f"Retention-time features: {retention_time_features}")
         self.logger.log(f"Max-correlation features: {max_correlation_features}")
+        self.logger.log(f"Rescoring worker threads: {rescoring_threads}")
         self.logger.log(f"Resolved NuXL-rescore command prefix: {self._nuxl_rescore_command_prefix()}")
         self.logger.log(f"Resolved Percolator: {self._percolator_path()}")
         self.logger.log(f"Resolved PercolatorAdapter: {self._percolator_adapter_path()}")
@@ -247,9 +587,9 @@ class Workflow(WorkflowManager):
                 idxml_original_100_xls=original_100_xls,
                 idxml_rescored_100_xls=expected_100_xls,
                 exp_name=id_stem,
+                result_dir=result_dir,
             )
 
-        # Keep a compact manifest for the results page.
         manifest = result_dir / "rescoring_manifest.tsv"
         files_to_report = [log_file_path]
         if expected_1_xls.exists():
@@ -263,6 +603,18 @@ class Workflow(WorkflowManager):
                 "path": [str(p) for p in files_to_report if p.exists()],
             }
         ).to_csv(manifest, sep="\t", index=False)
+
+        zip_path = self._zip_rescoring_outputs(result_dir)
+        global_zip_path = self._copy_rescoring_outputs_to_global_result_files(
+            result_dir=result_dir,
+            zip_path=zip_path,
+        )
+        self._write_latest_download_state(
+            id_stem=id_stem,
+            result_dir=result_dir,
+            zip_path=zip_path,
+            global_zip_path=global_zip_path,
+        )
 
         self.logger.log("NuXL rescoring completed successfully.")
         return True
@@ -315,19 +667,19 @@ class Workflow(WorkflowManager):
             str(p)
             for p in sorted(input_dir.iterdir())
             if p.is_file()
-            and p.name.endswith(".idXML")
-            and not any(marker in p.name for marker in EXCLUDED_IDXML_MARKERS)
+            and p.suffix.lower() == ".idxml"
+            and self._is_valid_initial_idxml_name(p.name)
             and p.name != "external_files.txt"
         ]
 
         external_file = input_dir / "external_files.txt"
         if external_file.exists():
-            for line in external_file.read_text().splitlines():
+            for line in external_file.read_text(encoding="utf-8").splitlines():
                 path = Path(line.strip())
                 if (
                     path.exists()
-                    and path.name.endswith(".idXML")
-                    and not any(marker in path.name for marker in EXCLUDED_IDXML_MARKERS)
+                    and path.suffix.lower() == ".idxml"
+                    and self._is_valid_initial_idxml_name(path.name)
                 ):
                     options.append(str(path))
 
@@ -342,15 +694,35 @@ class Workflow(WorkflowManager):
                 p
                 for p in sorted(input_dir.iterdir())
                 if p.is_file()
-                and p.name.endswith(".idXML")
+                and p.suffix.lower() == ".idxml"
                 and p.name != "external_files.txt"
             )
 
             external_file = input_dir / "external_files.txt"
             if external_file.exists():
-                for line in external_file.read_text().splitlines():
+                for line in external_file.read_text(encoding="utf-8").splitlines():
                     path = Path(line.strip())
-                    if path.exists() and path.name.endswith(".idXML"):
+                    if path.exists() and path.suffix.lower() == ".idxml":
+                        files.append(path)
+
+        return files
+
+    def _all_global_idxml_files(self) -> list[Path]:
+        global_result_dir = Path(self.workflow_dir).parent / "result-files"
+        files: list[Path] = []
+
+        if global_result_dir.exists():
+            files.extend(
+                p
+                for p in sorted(global_result_dir.iterdir())
+                if p.is_file() and p.suffix.lower() == ".idxml"
+            )
+
+            external_file = global_result_dir / "external_files.txt"
+            if external_file.exists():
+                for line in external_file.read_text(encoding="utf-8").splitlines():
+                    path = Path(line.strip())
+                    if path.exists() and path.suffix.lower() == ".idxml":
                         files.append(path)
 
         return files
@@ -364,15 +736,15 @@ class Workflow(WorkflowManager):
                 p
                 for p in sorted(input_dir.iterdir())
                 if p.is_file()
-                and p.suffix.lower() in {".mzml", ".mgf"}
+                and p.suffix.lower() == ".mgf"
                 and p.name != "external_files.txt"
             )
 
             external_file = input_dir / "external_files.txt"
             if external_file.exists():
-                for line in external_file.read_text().splitlines():
+                for line in external_file.read_text(encoding="utf-8").splitlines():
                     path = Path(line.strip())
-                    if path.exists() and path.suffix.lower() in {".mzml", ".mgf"}:
+                    if path.exists() and path.suffix.lower() == ".mgf":
                         files.append(path)
 
         return files
@@ -435,16 +807,6 @@ class Workflow(WorkflowManager):
         return model_path, calibration_data
 
     def _nuxl_rescore_command_prefix(self) -> list[str]:
-        """
-        Resolve the NuXL-rescore command for both local Windows and Linux/Docker.
-
-        Windows/local NuXLApp usually has nuxl_rescore installed inside the
-        bundled Python environment, so the correct command is:
-            python-3.10.0/python.exe -m nuxl_rescore run
-
-        Linux/Docker usually exposes nuxl_rescore on PATH. If not, fall back to
-        the current Python interpreter and module execution.
-        """
         if os.name == "nt":
             python_candidates = [
                 Path.cwd() / "python-3.10.0" / "python.exe",
@@ -464,7 +826,6 @@ class Workflow(WorkflowManager):
         return [sys.executable, "-m", "nuxl_rescore", "run"]
 
     def _percolator_path(self) -> str:
-        """Resolve Percolator for Windows/local and Linux/Docker."""
         candidates = []
 
         if os.name == "nt":
@@ -489,7 +850,6 @@ class Workflow(WorkflowManager):
         return shutil.which("percolator") or "percolator"
 
     def _percolator_adapter_path(self) -> str:
-        """Resolve OpenMS PercolatorAdapter for Windows/local and Linux/Docker."""
         candidates = []
 
         if os.name == "nt":
@@ -512,31 +872,6 @@ class Workflow(WorkflowManager):
                 return str(candidate)
 
         return shutil.which("PercolatorAdapter") or "PercolatorAdapter"
-
-    def _file_converter_tool(self) -> str:
-        """Resolve OpenMS FileConverter for Windows/local and Linux/Docker."""
-        candidates = []
-
-        if os.name == "nt":
-            candidates.extend(
-                [
-                    Path.cwd() / "FileConverter.exe",
-                    Path.cwd() / "bin" / "FileConverter.exe",
-                ]
-            )
-
-        candidates.extend(
-            [
-                Path.cwd() / "FileConverter",
-                Path.cwd() / "bin" / "FileConverter",
-            ]
-        )
-
-        for candidate in candidates:
-            if candidate.exists():
-                return str(candidate)
-
-        return shutil.which("FileConverter") or "FileConverter"
 
     def _build_rescore_command(
         self,
@@ -613,42 +948,32 @@ class Workflow(WorkflowManager):
 
         return args, expected_100_xls, expected_1_xls
 
-    def _ensure_mgf_for_idxml(self, idxml_file: str, result_dir: Path) -> Path | None:
-        stem = Path(idxml_file).stem
-        mgf_name = f"{stem}.mgf"
-        mzml_name = f"{stem}.mzML"
+    def _ensure_mgf_for_idxml(self, idxml_file: str) -> Path | None:
+        selected_mgf = self.params.get("mgf-file")
 
-        uploaded_ms_files = self._all_uploaded_ms_files()
+        if selected_mgf and selected_mgf != "None":
+            selected_path = Path(str(selected_mgf))
 
-        for path in uploaded_ms_files:
-            if path.name == mgf_name:
-                return path
+            if selected_path.exists() and selected_path.suffix.lower() == ".mgf":
+                return selected_path
 
-        mzml_path = None
-        for path in uploaded_ms_files:
-            if path.name == mzml_name:
-                mzml_path = path
-                break
+            # Fallback if ParameterManager stored only the displayed file name.
+            for path in self._all_uploaded_ms_files():
+                if path.name == str(selected_mgf):
+                    return path
 
-        if mzml_path is None:
+            self.logger.log(f"ERROR: Selected MGF file does not exist: {selected_mgf}")
             return None
 
-        mgf_out = result_dir / mgf_name
-        self.logger.log(f"Converting mzML to MGF: {mzml_path} -> {mgf_out}")
+        if not self._all_uploaded_ms_files():
+            self.logger.log("ERROR: No MGF files are available.")
+            return None
 
-        success = self.executor.run_topp(
-            self._file_converter_tool(),
-            input_output={
-                "in": [str(mzml_path)],
-                "out": [str(mgf_out)],
-            },
+        self.logger.log(
+            "ERROR: Please select an MGF file in Configure when "
+            "Max-correlation features are enabled."
         )
-
-        if not success:
-            self.logger.log("ERROR: mzML to MGF conversion failed.")
-            return None
-
-        return mgf_out
+        return None
 
     def _find_reference_idxml(
         self,
@@ -657,12 +982,19 @@ class Workflow(WorkflowManager):
         result_dir: Path,
     ) -> Path | None:
         selected_dir = Path(selected_idxml_file).parent
+        global_result_dir = Path(self.workflow_dir).parent / "result-files"
+
         candidates = [
             selected_dir / reference_name,
             result_dir / reference_name,
+            global_result_dir / reference_name,
         ]
 
         for path in self._all_uploaded_idxml_files():
+            if path.name == reference_name:
+                candidates.append(path)
+
+        for path in self._all_global_idxml_files():
             if path.name == reference_name:
                 candidates.append(path)
 
@@ -690,6 +1022,7 @@ class Workflow(WorkflowManager):
         idxml_original_100_xls: Path | None,
         idxml_rescored_100_xls: Path,
         exp_name: str,
+        result_dir: Path,
     ) -> None:
         if not idxml_original_100_xls or not idxml_original_100_xls.exists():
             self.logger.log(
@@ -714,6 +1047,13 @@ class Workflow(WorkflowManager):
                 FDR_level=20,
                 exp_name=exp_name,
             )
+
+            output_pdf = Path(output_pdf)
+            if output_pdf.exists() and output_pdf.parent != result_dir:
+                target_pdf = self._unique_file_path(result_dir / output_pdf.name)
+                shutil.copy2(output_pdf, target_pdf)
+                output_pdf = target_pdf
+
             self.logger.log(f"Generated pseudo-ROC plot: {output_pdf}")
         except Exception as exc:
             self.logger.log(f"WARNING: Failed to generate pseudo-ROC plot: {exc}")
@@ -735,8 +1075,11 @@ class Workflow(WorkflowManager):
         id_file = Path(idxml_file)
         log_file_path = result_dir / f"{id_file.stem}_rescore_out_log_{time_stamp}.txt"
 
-        settings = st.session_state.get("settings", {}) if hasattr(st, "session_state") else {}
-        app_version = settings.get("version", "unknown")
+        try:
+            settings = st.session_state.get("settings", {})
+            app_version = settings.get("version", "unknown")
+        except Exception:
+            app_version = "unknown"
 
         args_cmd = " ".join(map(str, args))
 
@@ -745,6 +1088,7 @@ class Workflow(WorkflowManager):
             ======= Parameters ==========
             NuXLApp version: {app_version}
             Selected idXML File: {idxml_file}
+            Selected MGF File: {self.params.get('mgf-file', 'None')}
             Protocol: {protocol}
             Retention time features: {retention_time_features}
             Max correlation features: {max_correlation_features}
@@ -764,3 +1108,140 @@ class Workflow(WorkflowManager):
 
         self.logger.log(f"Wrote rescoring log: {log_file_path}")
         return log_file_path
+
+    def _zip_rescoring_outputs(self, result_dir: Path) -> Path:
+        zip_path = result_dir / "rescoring_out_files.zip"
+
+        if zip_path.exists():
+            zip_path.unlink()
+
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_handle:
+            for file_path in sorted(result_dir.iterdir()):
+                if not file_path.is_file():
+                    continue
+
+                if file_path.resolve() == zip_path.resolve():
+                    continue
+
+                zip_handle.write(file_path, arcname=file_path.name)
+
+        self.logger.log(f"Created rescoring ZIP archive: {zip_path}")
+        return zip_path
+
+    def _copy_rescoring_outputs_to_global_result_files(
+        self,
+        result_dir: Path,
+        zip_path: Path,
+    ) -> Path:
+        global_result_dir = Path(self.workflow_dir).parent / "result-files"
+        global_result_dir.mkdir(parents=True, exist_ok=True)
+
+        global_zip_path: Path | None = None
+        copied_files: list[Path] = []
+
+        for source_file in sorted(result_dir.iterdir()):
+            if not source_file.is_file():
+                continue
+
+            target_file = self._unique_file_path(global_result_dir / source_file.name)
+            shutil.copy2(source_file, target_file)
+            copied_files.append(target_file)
+
+            if source_file.resolve() == zip_path.resolve():
+                global_zip_path = target_file
+
+        if global_zip_path is None:
+            global_zip_path = self._unique_file_path(global_result_dir / zip_path.name)
+            shutil.copy2(zip_path, global_zip_path)
+            copied_files.append(global_zip_path)
+
+        self.logger.log(
+            "Copied rescoring output file(s) directly to global result-files:\n"
+            + "\n".join(f"- {file}" for file in copied_files)
+        )
+
+        return global_zip_path
+
+    def _unique_file_path(self, target_file: Path) -> Path:
+        if not target_file.exists():
+            return target_file
+
+        counter = 1
+        while True:
+            candidate = target_file.with_name(
+                f"{target_file.stem}_{counter}{target_file.suffix}"
+            )
+            if not candidate.exists():
+                return candidate
+            counter += 1
+
+    def _write_latest_download_state(
+        self,
+        id_stem: str,
+        result_dir: Path,
+        zip_path: Path,
+        global_zip_path: Path,
+    ) -> None:
+        state_file = self._latest_download_state_file()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+
+        state = {
+            "id_stem": id_stem,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "result_dir": str(result_dir),
+            "zip_path": str(zip_path),
+            "global_zip_path": str(global_zip_path),
+        }
+
+        state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        self.logger.log(f"Wrote latest rescoring download state: {state_file}")
+
+    def _latest_download_state_file(self) -> Path:
+        return Path(
+            self.workflow_dir,
+            "results",
+            "rescoring",
+            "latest_rescoring_download.json",
+        )
+
+    def _render_latest_success_download(self) -> None:
+        log_file = Path(self.workflow_dir, "logs", "minimal.log")
+        if not log_file.exists():
+            return
+
+        log_content = log_file.read_text(encoding="utf-8", errors="replace")
+        if "WORKFLOW FINISHED" not in log_content:
+            return
+
+        state_file = self._latest_download_state_file()
+        if not state_file.exists():
+            return
+
+        try:
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return
+
+        zip_path = Path(state.get("global_zip_path") or state.get("zip_path") or "")
+        if not zip_path.exists():
+            fallback_zip = Path(state.get("zip_path") or "")
+            if fallback_zip.exists():
+                zip_path = fallback_zip
+            else:
+                return
+
+        st.divider()
+        st.success("⚡️ **NuXL Rescoring Completed Successfully!** ⚡️")
+        st.info("Preparing download link for rescoring output files ...", icon="ℹ️")
+
+        with open(zip_path, "rb") as handle:
+            st.download_button(
+                label=f"⬇️ {state.get('id_stem', zip_path.stem)}_rescoring_out_files",
+                data=handle,
+                file_name=zip_path.name,
+                mime="application/zip",
+                use_container_width=True,
+                key="latest-rescoring-download",
+            )
+
+        st.caption("Rescoring output files were copied directly to global result-files.")
