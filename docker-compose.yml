@@ -5,13 +5,13 @@ services:
       dockerfile: Dockerfile
       args:
         GITHUB_TOKEN: $GITHUB_TOKEN
-    image: openms_streamlit_template
-    container_name: openms-streamlit-template
+    image: nuxl_app
+    container_name: nuxl_app
     restart: always
     ports:
       - 8501:8501
     volumes:
-      - workspaces-streamlit-template:/workspaces-streamlit-template
+      - workspaces-nuxl-app:/workspaces-nuxl-app
       # Optional: bind-mount a host directory of MS data files at the path
       # that `local_data_dir` in settings.json points to (the Docker image
       # defaults this to /mounted-data). When the directory exists at
@@ -22,4 +22,4 @@ services:
       # Set to >1 to enable nginx load balancing across multiple Streamlit instances.
       - STREAMLIT_SERVER_COUNT=1
 volumes:
-  workspaces-streamlit-template:
+  workspaces-nuxl-app:
