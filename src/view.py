@@ -4,249 +4,324 @@ from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-import matplotlib.pyplot as plt
-from pyopenms import *
+import pyopenms as poms
+from src.common.common import show_fig, display_large_dataframe
+from typing import Union
 
-@st.cache_resource
-def plot_ms2_spectrum(spec, title, color):
+
+def get_df(file: Union[str, Path]) -> pd.DataFrame:
     """
-    Takes a pandas Series (spec) and generates a needle plot with m/z and intensity dimension, also annotate ions.
+    Load a Mass Spectrometry (MS) experiment from a given mzML file and return
+    a pandas dataframe representation of the experiment.
 
     Args:
-        spec: Pandas Series representing the mass spectrum with 
-              "mzarray" {ions m/z ratio}, "intarray" {ion intensities} and "anotarray" {ions annotation} columns.
-        title: Title of the plot.
-        color: Color of the line in the plot.
+        file (Union[str, Path]): The path to the mzML file to load.
 
     Returns:
-        A Plotly Figure object representing the needle plot of the mass spectrum.
+        pd.DataFrame: A pandas DataFrame with the following columns: "mslevel",
+        "precursormz", "mzarray", and "intarray". The "mzarray" and "intarray"
+        columns contain NumPy arrays with the m/z and intensity values for each
+        spectrum in the mzML file, respectively.
     """
+    exp = poms.MSExperiment()
+    poms.MzMLFile().load(str(file), exp)
+    df_spectra = exp.get_df()
+    df_spectra.rename(columns={
+        'rt': 'RT',
+        'ms_level': 'MS level',
+        'mz_array': 'mzarray',
+        'intensity_array': 'intarray',
+    }, inplace=True)
+    precs = []
+    for spec in exp:
+        p = spec.getPrecursors()
+        if p:
+            precs.append(p[0].getMZ())
+        else:
+            precs.append(np.nan)
+    df_spectra["precursor m/z"] = precs
 
-    # Every Peak is represented by three dots in the line plot: (x, 0), (x, y), (x, 0)
-    def create_spectra(x, y, zero=0):
-        x = np.repeat(x, 3)
-        y = np.repeat(y, 3)
-        y[::3] = y[2::3] = zero
-        return pd.DataFrame({"mz": x, "intensity": y})
+    # Drop spectra without peaks
+    df_spectra = df_spectra[df_spectra["mzarray"].apply(lambda x: len(x) > 0)]
 
-    df = create_spectra(spec["mzarray"], spec["intarray"])
-    fig = px.line(df, x="mz", y="intensity")
-    fig.update_traces(line_color=color,  line_width=1)
-    fig.update_layout(
-        showlegend=True,
-        title_text=title,
-        xaxis_title="m/z",
-        yaxis_title="intensity",
-        plot_bgcolor="rgb(255,255,255)",
+    df_spectra["max intensity m/z"] = df_spectra.apply(
+        lambda x: x["mzarray"][x["intarray"].argmax()], axis=1
     )
-    fig.layout.template = "plotly_white"
-    fig.update_yaxes(fixedrange=True)
+    if not df_spectra.empty:
+        st.session_state["view_spectra"] = df_spectra
+    else:
+        st.session_state["view_spectra"] = pd.DataFrame()
+    exp_ms2 = poms.MSExperiment()
+    exp_ms1 = poms.MSExperiment()
+    for spec in exp:
+        if spec.getMSLevel() == 1:
+            exp_ms1.addSpectrum(spec)
+        elif spec.getMSLevel() == 2:
+            exp_ms2.addSpectrum(spec)
+    _long_rename = {'rt': 'RT', 'intensity': 'inty'}
+    if not exp_ms1.empty():
+        st.session_state["view_ms1"] = exp_ms1.get_df(long=True).rename(columns=_long_rename)
+    else:
+        st.session_state["view_ms1"] = pd.DataFrame(columns=['RT', 'mz', 'inty'])
+    if not exp_ms2.empty():
+        st.session_state["view_ms2"] = exp_ms2.get_df(long=True).rename(columns=_long_rename)
+    else:
+        st.session_state["view_ms2"] = pd.DataFrame(columns=['RT', 'mz', 'inty'])
 
-    # Annotate every line with a string
-    for mz, intensity, annotation in zip(spec["mzarray"], spec["intarray"], spec["anotarray"]):
-        if intensity < 0.3:
-            yshift_ = 60  # Adjust this value for peaks with high intensity
-        else:
-            yshift_ = 20  # Adjust this value for peaks with low intensity
 
-        # change the annotation colour according to ion-type
-        if "MI" in annotation:
-            annotation_color = '#ff0000' 
-        elif "y" in annotation:
-            annotation_color = 'green' 
-        elif "[M" in annotation:
-            annotation_color = 'darkmagenta'
-        else:
-            annotation_color = 'blue'  # Default color for other annotations
-
-        #add annotations
-        fig.add_annotation(
-            x=mz,
-            y=intensity,
-            text=annotation,
-            showarrow=False,
-            arrowhead=1,
-            arrowcolor=color,
-            font=dict(size=12, color=annotation_color),
-            xshift=0,
-            yshift=yshift_,
-            textangle=90 #verticle
-        )
-
-    return fig
-
-@st.cache_resource
-def plot_ms2_spectrum_full(spec, title, base_color):
-    """
-    Takes a pandas Series (spec) and generates a needle plot with m/z and intensity dimension, also annotates ions.
-    
-    Args:
-        spec: Pandas Series representing the mass spectrum with 
-              "mzarray" {ions m/z ratio}, "intarray" {ion intensities} and "anotarray" {ions annotation} columns.
-        title: Title of the plot.
-        base_color: Base color for the line.
+def plot_bpc_tic() -> go.Figure:
+    """Plot the base peak and total ion chromatogram (TIC).
 
     Returns:
-        A Plotly Figure object representing the needle plot of the mass spectrum.
+        A plotly Figure object containing the BPC and TIC plot.
     """
-    
-    # Every Peak is represented by three dots in the line plot: (x, 0), (x, y), (x, 0)
-    def create_spectra(x, y, zero=0):
-        x = np.repeat(x, 3)
-        y = np.repeat(y, 3)
-        y[::3] = y[2::3] = zero
-        return pd.DataFrame({"mz": x, "intensity": y})
-
-    df = create_spectra(spec["mzarray"], spec["intarray"])
-
-    # Create a scatter plot with the base color
     fig = go.Figure()
-
-    # Add base line with a meaningful name
-    fig.add_trace(go.Scatter(
-        x=df["mz"], y=df["intensity"], 
-        mode='lines', 
-        line=dict(color=base_color, width=1),
-        name='Annotated peaks'  
-    ))
-
-    # Annotate every line with a string if annotation exists
-    for mz, intensity, annotation in zip(spec["mzarray"], spec["intarray"], spec["anotarray"]):
-        if pd.isna(annotation) or annotation.strip() == "":
-            continue  # Skip annotation if it's missing or empty
-
-        if intensity < 0.3:
-            yshift_ = 60  # Adjust this value for peaks with high intensity
-        else:
-            yshift_ = 20  # Adjust this value for peaks with low intensity
-
-        # Change the annotation color according to ion-type
-        if "MI" in annotation:
-            annotation_color = '#ff0000'  # Red for MI
-        elif "y" in annotation:
-            annotation_color = 'green'  # Green for y
-        elif "[M" in annotation:
-            annotation_color = 'darkmagenta'  # Dark Magenta for M
-        else:
-            annotation_color = 'blue'  # Default color for other annotations
-
-        # Add annotation
-        fig.add_annotation(
-            x=mz,
-            y=intensity,
-            text=annotation,
-            showarrow=False,
-            arrowhead=1,
-            arrowcolor=annotation_color,
-            font=dict(size=12, color=annotation_color),
-            xshift=0,
-            yshift=yshift_,
-            textangle=90  # Vertical
+    max_int = 0
+    if st.session_state.view_tic:
+        df = st.session_state.view_ms1.groupby("RT").sum().reset_index()
+        df["type"] = "TIC"
+        if df["inty"].max() > max_int:
+            max_int = df["inty"].max()
+        fig = df.plot(
+            backend="ms_plotly",
+            kind="chromatogram",
+            x="RT",
+            y="inty",
+            by="type",
+            color="#f24c5c",
+            show_plot=False,
+            grid=False,
+            aggregate_duplicates=True,
         )
+    if st.session_state.view_bpc:
+        df = st.session_state.view_ms1.groupby("RT").max().reset_index()
+        df["type"] = "BPC"
+        if df["inty"].max() > max_int:
+            max_int = df["inty"].max()
+        fig = df.plot(
+            backend="ms_plotly",
+            kind="chromatogram",
+            x="RT",
+            y="inty",
+            by="type",
+            color="#2d3a9d",
+            show_plot=False,
+            grid=False,
+            aggregate_duplicates=True,
+        )
+    if st.session_state.view_eic:
+        df = st.session_state.view_ms1
+        target_value = st.session_state.view_eic_mz.strip().replace(",", ".")
+        try:
+            target_value = float(target_value)
+            ppm_tolerance = st.session_state.view_eic_ppm
+            tolerance = (target_value * ppm_tolerance) / 1e6
 
-        # Add a vertical line at the position of the peak with the annotation color
-        fig.add_trace(go.Scatter(
-            x=[mz, mz],
-            y=[0, intensity],
-            mode='lines',
-            line=dict(color=annotation_color, width=1),
-            showlegend=False
-        ))
+            # Filter the DataFrame
+            df_eic = df[
+                (df["mz"] >= target_value - tolerance)
+                & (df["mz"] <= target_value + tolerance)
+            ].copy()
+            if not df_eic.empty:
+                df_eic.loc[:, "type"] = "XIC"
+                if df_eic["inty"].max() > max_int:
+                    max_int = df_eic["inty"].max()
+                fig = df_eic.plot(
+                    backend="ms_plotly",
+                    kind="chromatogram",
+                    x="RT",
+                    y="inty",
+                    by="type",
+                    color="#f6bf26",
+                    show_plot=False,
+                    grid=False,
+                    aggregate_duplicates=True,
+                )
+        except ValueError:
+            st.error("Invalid m/z value for XIC provided. Please enter a valid number.")
 
+    fig.update_yaxes(range=[0, max_int])
     fig.update_layout(
-        showlegend=True,
-        title_text=title,
-        xaxis_title="m/z",
+        title=f"{st.session_state.view_selected_file}",
+        xaxis_title="retention time (s)",
         yaxis_title="intensity",
         plot_bgcolor="rgb(255,255,255)",
+        height=500,
     )
     fig.layout.template = "plotly_white"
-    fig.update_yaxes(fixedrange=True)
-
     return fig
 
 
-def plot_FDR_plot(idXML_id, idXML_extra, exp_name= "FileName", FDR_level=10):
-    """
-    FDR plot of two input idXML identification files
-    idXML_id: without extra feature
-    idXML_extra: with extra feature
-    FDR_level: 10 for 0.01, 20 for 0.02, 100 for 1.0
-    """
+@st.cache_resource
+def plot_ms_spectrum(df, title, bin_peaks, num_x_bins):
+    fig = df.plot(
+        kind="spectrum",
+        backend="ms_plotly",
+        x="mz",
+        y="intensity",
+        color="#2d3a9d",
+        title=title,
+        show_plot=False,
+        grid=False,
+        bin_peaks=bin_peaks,
+        num_x_bins=num_x_bins,
+        aggregate_duplicates=True,
+    )
+    fig.update_layout(
+        template="plotly_white", dragmode="select", plot_bgcolor="rgb(255,255,255)"
+    )
+    return fig
 
-    # ---------- Without extra features ----------
-    protein_ids = []
-    peptide_ids = []
-    IdXMLFile().load(idXML_id, protein_ids, peptide_ids)
 
-    Psm_score_list = []
-    for pep_id in peptide_ids:
-        for hit in pep_id.getHits():
-            Psm_score_list.append(float(hit.getScore()))
+@st.fragment
+def view_peak_map():
+    df = st.session_state.view_ms1
+    if "view_peak_map_selection" in st.session_state:
+        box = st.session_state.view_peak_map_selection.selection.box
+        if box:
+            df = st.session_state.view_ms1.copy()
+            df = df[df["RT"] > box[0]["x"][0]]
+            df = df[df["mz"] > box[0]["y"][1]]
+            df = df[df["mz"] < box[0]["y"][0]]
+            df = df[df["RT"] < box[0]["x"][1]]
+    if len(df) == 0:
+        return
+    peak_map = df.plot(
+        kind="peakmap",
+        x="RT",
+        y="mz",
+        z="inty",
+        title=st.session_state.view_selected_file,
+        grid=False,
+        show_plot=False,
+        bin_peaks=True,
+        backend="ms_plotly",
+        aggregate_duplicates=True,
+    )
+    peak_map.update_layout(template="simple_white", dragmode="select")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.info(
+            "💡 Zoom in via rectangular selection for more details and 3D plot. Double click plot to zoom back out."
+        )
+        show_fig(
+            peak_map,
+            f"peak_map_{st.session_state.view_selected_file}",
+            selection_session_state_key="view_peak_map_selection",
+        )
+    with c2:
+        if df.shape[0] < 2500:
+            peak_map_3D = df.plot(
+                kind="peakmap",
+                plot_3d=True,
+                backend="ms_plotly",
+                x="RT",
+                y="mz",
+                z="inty",
+                zlabel="Intensity",
+                title="",
+                show_plot=False,
+                grid=False,
+                bin_peaks=st.session_state.spectrum_bin_peaks,
+                num_x_bins=st.session_state.spectrum_num_bins,
+                height=650,
+                width=900,
+                aggregate_duplicates=True,
+            )
+            st.plotly_chart(peak_map_3D, use_container_width=True)
 
-    list_results = []
-    q_values = []
-    x = -0.0002
-    for _ in range(10001):
-        list_results.append(sum(j < x for j in Psm_score_list))
-        q_values.append(x)
-        x += 0.0001
 
-    # ---------- With extra features ----------
-    protein_ids_extra = []
-    peptide_ids_extra = []
-    IdXMLFile().load(idXML_extra, protein_ids_extra, peptide_ids_extra)
+@st.fragment
+def view_spectrum():
+    cols = st.columns([0.34, 0.66])
+    with cols[0]:
+        df = st.session_state.view_spectra.copy()
+        df["spectrum ID"] = df.index + 1
+        index = display_large_dataframe(
+            df,
+            column_order=[
+                "spectrum ID",
+                "RT",
+                "MS level",
+                "max intensity m/z",
+                "precursor m/z",
+            ],
+            selection_mode="single-row",
+            on_select="rerun",
+            use_container_width=True,
+            hide_index=True,
+        )
+    with cols[1]:
+        if (index is not None) and (len(df) != 0):
+            df = st.session_state.view_spectra.iloc[index]
+            if "view_spectrum_selection" in st.session_state:
+                box = st.session_state.view_spectrum_selection.selection.box
+                if box:
+                    mz_min, mz_max = sorted(box[0]["x"])
+                    mask = (df["mzarray"] > mz_min) & (df["mzarray"] < mz_max)
+                    df["intarray"] = df["intarray"][mask]
+                    df["mzarray"] = df["mzarray"][mask]
 
-    Psm_score_list_extra = []
-    for pep_id in peptide_ids_extra:
-        for hit in pep_id.getHits():
-            Psm_score_list_extra.append(float(hit.getScore()))
+            if df["mzarray"].size > 0:
+                title = f"{st.session_state.view_selected_file}  spec={index+1}  mslevel={df['MS level']}"
+                if df["precursor m/z"] > 0:
+                    title += f" precursor m/z: {round(df['precursor m/z'], 4)}"
 
-    list_results_extra = []
-    q_values_extra = []
-    x = -0.0002
-    len_3000 = 0
+                df_selected = pd.DataFrame(
+                    {
+                        "mz": df["mzarray"],
+                        "intensity": df["intarray"],
+                    }
+                )
+                df_selected["RT"] = df["RT"]
+                df_selected["MS level"] = df["MS level"]
+                df_selected["precursor m/z"] = df["precursor m/z"]
+                df_selected["max intensity m/z"] = df["max intensity m/z"]
 
-    for i in range(100001):
-        values = sum(j < x for j in Psm_score_list_extra)
-        list_results_extra.append(values)
-        q_values_extra.append(x)
-        x += 0.0001
-        if i == 3000:
-            len_3000 = values
+                fig = plot_ms_spectrum(
+                    df_selected,
+                    title,
+                    st.session_state.spectrum_bin_peaks,
+                    st.session_state.spectrum_num_bins,
+                )
 
-    psms_count_1_per_solely = np.sum(np.array(Psm_score_list) < 0.01)
-    psms_count_1_per_extra = np.sum(np.array(Psm_score_list_extra) < 0.01)
+                show_fig(fig, title.replace(" ", "_"), True, "view_spectrum_selection")
+            else:
+                st.session_state.pop("view_spectrum_selection")
+                st.rerun()
+        else:
+            st.info("💡 Select rows in the spectrum table to display plot.")
 
-     # ---------- Plot ----------
-    fig, ax = plt.subplots(figsize=(8, 7))
 
-    ax.plot(q_values, list_results,
-            color="red", label="no extra feat", linewidth=1.0)
-    ax.plot(q_values_extra, list_results_extra,
-            color="blue", label="extra feat", linewidth=1.0)
-
-    ax.axvline(x=0.01, color="green", linewidth=1.0)
-    ax.set_title(f"{exp_name}\nNuXL: {psms_count_1_per_solely} +extra: {psms_count_1_per_extra} CSMs at 1% CSM-level FDR", fontsize=12)
-    ax.set_xlabel("CSM-level q-value", fontsize=12)
-    ax.set_ylabel("no. of CSMs", fontsize=12)
-
-    if FDR_level == 10:
-        ax.set_xlim(-0.01, 0.1)
-        ax.set_ylim(0, len_3000)
-    elif FDR_level == 20:
-        ax.set_xlim(-0.01, 0.2) 
-        ax.set_ylim(0, len_3000)
-    elif FDR_level == 100:
-        ax.set_xlim(-0.01, 1.0)    
-    
-    ax.legend()
-
-    # ---------- Save figure (no os used) ----------
-    output_pdf = idXML_extra.replace(".idXML", "") + "_rescore_comparsion.pdf"
-    fig.savefig(output_pdf, format="pdf", bbox_inches="tight")
-
-    # ---------- Render in Streamlit ----------
-    #st.pyplot(fig)
-    return fig, output_pdf
-    
+@st.fragment()
+def view_bpc_tic():
+    cols = st.columns(5)
+    cols[0].checkbox(
+        "Total Ion Chromatogram (TIC)", True, key="view_tic", help="Plot TIC."
+    )
+    cols[1].checkbox(
+        "Base Peak Chromatogram (BPC)", True, key="view_bpc", help="Plot BPC."
+    )
+    cols[2].checkbox(
+        "Extracted Ion Chromatogram (EIC/XIC)",
+        True,
+        key="view_eic",
+        help="Plot extracted ion chromatogram with specified m/z.",
+    )
+    cols[3].text_input(
+        "XIC m/z",
+        "235.1189",
+        help="m/z for XIC calculation.",
+        key="view_eic_mz",
+    )
+    cols[4].number_input(
+        "XIC ppm tolerance",
+        0.1,
+        50.0,
+        10.0,
+        1.0,
+        help="Tolerance for XIC calculation (ppm).",
+        key="view_eic_ppm",
+    )
+    fig = plot_bpc_tic()
+    show_fig(fig, f"BPC-TIC-{st.session_state.view_selected_file}")

@@ -1,20 +1,22 @@
 import streamlit as st
-from src.common import *
-from src.result_files import *
+#from src.common import *
+from src.nuxl_result_files import *
 import plotly.graph_objects as go
-from src.view import plot_ms2_spectrum, plot_ms2_spectrum_full
+from src.nuxl_view import plot_ms2_spectrum, plot_ms2_spectrum_full, download_table, show_fig
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, ColumnsAutoSizeMode
-from src.captcha_ import *
 from pyopenms import *
 import re
 
+from src.common.common import (
+    page_setup,
+    save_params,
+    v_space,
+    show_table,
+    TK_AVAILABLE,
+    tk_directory_dialog,
+)
+
 params = page_setup()
-
-# If run in hosted mode, show captcha as long as it has not been solved
-if 'controllo' not in st.session_state or params["controllo"] == False:
-    # Apply captcha by calling the captcha_control function
-    captcha_control()
-
 
 ##################################
 
