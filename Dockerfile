@@ -155,4 +155,3 @@ RUN curl -L \
 
 EXPOSE $PORT
 ENTRYPOINT ["/app/entrypoint.sh"]
-
