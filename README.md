@@ -1,87 +1,203 @@
-# OpenMS NuXL App [![Open Template!](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://openms-template.streamlit.app/)
+# OpenMS streamlit template 
 
-Welcome to the OpenMS NuXL App, a web application for the NuXL protein-nucleic acid search engine built using [OpenMS](https://openms.de/) and [pyOpenMS](https://pyopenms.readthedocs.io/en/latest/).<br/>
-**website:** [https://abi-services.cs.uni-tuebingen.de/nuxl/](https://abi-services.cs.uni-tuebingen.de/nuxl/)
+[![Open Template!](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://abi-services.cs.uni-tuebingen.de/streamlit-template/)
 
-## Description
-NuXL is a dedicated software package designed for the analysis of XL-MS (cross-linking mass spectrometry) data obtained from UV and chemically crosslinked protein–RNA/DNA samples. This powerful tool allows for reliable, FDR-controlled assignment of protein–nucleic acid crosslinking sites in samples treated with UV light or chemical crosslinkers. It offers user-friendly matched spectra visualization, including ion annotations.
+This repository contains a template app for OpenMS workflows in a web application using the **streamlit** framework. It serves as a foundation for apps ranging from simple workflows with **pyOpenMS** to complex workflows utilizing **OpenMS TOPP tools** with parallel execution. It includes solutions for handling user data and parameters in workspaces as well as deployment with docker-compose.
 
-Rescoring refers to the post-processing of initial identification results to improve discrimination between correct and incorrect matches by incorporating additional evidence, such as predicted retention time or fragment ion intensities. Such approaches have been shown to increase the identification rate.
+## Features
 
-👉 With NuXL App users can analyze data with NuXL search engine, run rescoring pipeline, and result interpretation with cross-link aware visualization.
+- Workspaces for user data with unique shareable IDs
+- Persistent parameters and input files within a workspace
+- local and online mode
+- Captcha control
+- Packaged executables for Windows
+- framework for workflows with OpenMS TOPP tools
+- Deployment [with docker-compose](https://github.com/OpenMS/streamlit-deployment)
 
-- **Reference:** 
-    - **NuXL search engine:**
-        Welp, L. M., Wulf, A., Chernev, A., Horokhovskyi, Y., Moshkovskii, S., Dybkov, O., ... & Urlaub, H. (2025). Chemical crosslinking extends and complements UV crosslinking in analysis of RNA/DNA nucleic acid–protein interaction sites by mass spectrometry. Nucleic Acids Research, 53(15), gkaf727. [https://doi.org/10.1093/nar/gkaf727](https://doi.org/10.1093/nar/gkaf727)
-    - **NuXL rescore:**
-        Siraj, A., Bouwmeester, R., Declercq, A., Welp, L., Chernev, A., Wulf, A., ... & Sachsenberg, T. (2024). Intensity and retention time prediction improves the rescoring of protein‐nucleic acid cross‐links. Proteomics, 24(8), 2300144.[https://doi.org/10.1002/pmic.202300144](https://doi.org/10.1002/pmic.202300144)
-       
-  
-**powered by:**
+## 🔗 Try the Online Demo
 
-<img src="assets/OpenMS_new.png" width=15%>
-  
-## Running NuXL locally: Installation as stand-alone tool
-### Windows
-1. To get started, download and extract the [OpenMS-NuXLApp.zip](https://github.com/Arslan-Siraj/nuxl-app/releases/tag/0.5.0) file from latest successfull action.
-2. After installation of `OpenMS-NuXLApp.msi`, The app can then be launched using the corresponding desktop icon.
-3. Use app in your default browser. <br/> 
+Explore the hosted version here:  👉 [Live App](https://abi-services.cs.uni-tuebingen.de/streamlit-template/)
 
-The workspaces for the project will be locally generated in the `workspaces-nuxl-app` directory, and the analysis will run using local resources.
+## 💻 Run Locally
+
+To run the app locally:
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/OpenMS/streamlit-template.git
+   cd streamlit-template
+   ```
+
+2. **Install dependencies**
    
-## Quickstart 
+   Make sure you can run ```pip``` commands.
+   
+   Install all dependencies with:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-User can start right away analyzing your data by following the steps below:
+4. **Launch the app**
+   ```bash
+   streamlit run app.py
+   ```
 
-### 1. Create a workspace
-On the left side of this page user can define a workspace where all data including uploaded files will be stored. Entering a workspace will switch to an existing one or create a new one if it does not exist yet. In the web app, user can share their results via the unique workspace ID. Be careful with sensitive data, anyone with access to this ID can view access the data. 
-
-### 2. 📁 Upload your files
-Upload `.mzML`. `.raw` and `.fasta` files via the **File Upload** tab. The data will be stored in the workspace. With the online hosted web app, user can upload only one file at a time.
-Locally there is no limit in files. However, it is recommended to upload large number of files by specifying the path to a directory containing the files.
-
-Your uploaded files will be shown on the same **File Upload** page in  **mzML files** and **Fasta files** tabs. Also user can remove the files from workspace.
-
-Users can download the example files from **Load example file** tab to current workspace.
-
-### 3. ⚙️ Analyze your uploaded data
-
-Select the `.mzML/.raw` and `.fasta` files for analysis, configure user settings including NuXL advanced parameters, and start the analysis using the **Run-analysis** button.
-
-User can terminate the analysis immediately using the **Terminate/Clear** button and user can see the real-time log of search engine.
-Once the analysis completed successfully, the output table will be displayed on the page, along with downloadable links for crosslink identification files for that particular analysis.
-
-### 4. ⚙️ Rescoring
-Select without FDR-controlled `.idXML` file from output of NuXL search engine. The name of file pattern is `(raw or mzML file_name).idXML`. If the NuxL search engine succesfully run, the file will showup here. After including the features start the analysis using the **Run-rescoring** button.
-
-User can terminate the rescoring analysis immediately using the **Terminate/Clear** button and User can see the real-time log of rescoring.
-Once the analysis completed successfully, the comparison PseudoROC curve at CSM-level FDR will generated, and available for download.
-
-### 5. ⚙️ DIA spectra library generation
-Select the experiments with (`.mzML`) it will extract the identified protein-NA and peptides from NuXL output at 1% CSM-level FDR, available in `.idXML` files. Optionally, user can do iRT alignment by providing MSFragger `library.tsv`, with `linear` or `piecewise` calibration mode.
-
-User can start the analysis using the **Generate Library** button. User can terminate the rescoring analysis immediately using the **Terminate/Clear** button and User can see the real-time log of spectral library generation.
-
-### 6. 📊 View your results
-Here, user can visualize and explore the output of the search engine. All crosslink output files in the workspace are available on the **View Results** tab.
-After selecting any file, user can view the `CSMs Table`, `PRTs Table`, `PRTs Summary`, `Crosslink efficiency` and `Precursor adducts summary`.
-
-Users can manage their result files available in workspace with `Result files` tab.Also Users can upload previously analyzed results files `.idXML and .tsv` to workspace with `Upload result files` tab.
-
-Note: Every table and plot can be downloaded, as indicated formats in the side-bar under ⚙️ Settings.
-
-### How to upload result files (e.g., from external sources/collaborator) for manual inspection and visualization?
-At **Upload result files** tab, user can  `upload` the results files and can visualize in **View Results** tab.
-In the web app, collaborators can visualize files by sharing a unique workspace ID.
-
-⚠️ Note: In the web app, all users with a unique workspace ID have the same rights.
-
-## Contact
-For any inquiries or assistance, please feel free to reach out to us.<br/><br/>
-[![Discord Shield](https://img.shields.io/discord/832282841836159006?style=flat-square&message=Discord&color=5865F2&logo=Discord&logoColor=FFFFFF&label=Discord)](https://discord.gg/4TAGhqJ7s5) [![Gitter](https://img.shields.io/static/v1?style=flat-square&message=on%20Gitter&color=ED1965&logo=Gitter&logoColor=FFFFFF&label=Chat)](https://gitter.im/OpenMS/OpenMS?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-<br/><br/>
+> ⚠️ Note: The local version offers limited functionality. Features that depend on OpenMS TOPP tools are only available out of the box in the Docker setup. For the local version [OpenMS Command Line Tools](https://openms.readthedocs.io/en/latest/about/installation.html) must be installed separately.
 
 
+## 🐳 Build with Docker
 
+This repository contains two Dockerfiles.
+
+1. `Dockerfile`: This Dockerfile builds all dependencies for the app including Python packages and the OpenMS TOPP tools. Recommended for more complex workflows where you want to use the OpenMS TOPP tools for instance with the **TOPP Workflow Framework**.
+2. `Dockerfile_simple`: This Dockerfile builds only the Python packages. Recommended for simple apps using pyOpenMS only.
+
+1. **Install Docker**
+
+   Install Docker from the [official Docker installation guide](https://docs.docker.com/engine/install/)  
+   
+   <details>
+   <summary>Click to expand</summary>
+   
+   ```bash
+   # Remove older Docker versions (if any)
+   for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove -y $pkg; done
+   ```
+   
+   </details>
+
+2. **Test Docker**
+   
+   Verify that Docker is working.
+   ```bash
+   docker run hello-world
+   ```
+   When running this command, you should see a hello world message from Docker.
+   
+3. **Clone the repository**
+   ```bash
+   git clone https://github.com/OpenMS/streamlit-template.git
+   cd streamlit-template
+   ```
+   
+4. **Specify GitHub token (to download Windows executables).**
+   
+   Create a temporary `.env` file with your Github token.
+   
+   It should contain only one line:
+   `GITHUB_TOKEN=<your-github-token>`
+
+   ℹ️ **Note:** This step is not strictly required, but skipping it will remove the option to download executables from the WebApp.
+   
+3. **Build & Launch the App**
+
+   To build and start the containers.
+   From the project root directory:
+   
+   ```bash
+   docker-compose up -d --build
+   ```
+     At the end, you should see this:
+      ```
+      [+] Running 2/2
+       ✔ openms-streamlit-template            Built      
+       ✔ Container openms-streamlit-template  Started  
+      ```
+      
+      To make sure server started successfully, run `docker compose ps`. You should see `Up` status:
+      ```
+      CONTAINER ID   IMAGE                       COMMAND                  CREATED         STATUS                 PORTS                                           NAMES
+      4abe0603e521   openms_streamlit_template   "/app/entrypoint.sh …"   7 minutes ago   Up 7 minutes           0.0.0.0:8501->8501/tcp, :::8501->8501/tcp       openms-streamlit-template
+      ```
+   
+      To map the port to default streamlit port `8501` and launch.
+      
+      ```
+      docker run -p 8505:8501 openms_streamlit_template
+      ```
+
+   ### Mount a local data directory
+
+   To make a directory of MS files on the host available to the running app
+   without uploading or copying them, bind-mount it into the container at
+   the path configured by `local_data_dir` in `settings.json` (the Docker
+   image defaults this to `/mounted-data`):
+
+   ```
+   docker run -p 8501:8501 \
+     -v /path/on/host:/mounted-data:ro \
+     openms_streamlit_template
+   ```
+
+   The upload widget auto-detects the mount: when the directory exists at
+   runtime it shows an in-app tree browser; selected files are referenced
+   in place via `external_files.txt` (no copy into the workspace volume),
+   so the mount can safely be read-only. Omitting `-v` hides the browser
+   and falls back to the standard upload UI. To use a different container
+   path, change `local_data_dir` in `settings.json` before building.
+
+## 🛰️ Run with Apptainer / Singularity (HPC)
+
+Apptainer (formerly Singularity) is the dominant container runtime on HPC
+clusters. CI publishes prebuilt SIFs to GHCR via ORAS, so you can pull a
+ready-to-run image with no on-the-fly OCI→SIF conversion and run it as your
+user — no root, no `--writable-tmpfs` required:
+
+```bash
+apptainer pull --name openms-streamlit-template.sif \
+  oras://ghcr.io/openms/streamlit-template/sif:latest
+apptainer run \
+  --bind /path/to/data:/mounted-data:ro \
+  --bind /path/to/workspaces:/workspaces-streamlit-template \
+  openms-streamlit-template.sif
+```
+
+Available tags follow the same scheme as the Docker images: `latest`,
+`main-full`, `main-simple`, `v*-full`, `v*-simple`, and per-commit SHAs.
+If a tag hasn't been prebuilt yet (e.g. a PR branch), fall back to on-the-fly
+conversion: `apptainer pull docker://ghcr.io/openms/streamlit-template:<tag>`.
+Requires apptainer 1.1+ or singularity-ce 3.10+ for the `oras://` transport.
+
+The entrypoint auto-detects the read-only root filesystem (set by apptainer's
+default isolation) and switches its runtime state — Redis data directory,
+nginx config, PID files — to `/tmp/openms-runtime-$$`, which is always
+writable inside an apptainer container. The workspace cleanup cron job is
+skipped in this mode; rerun `clean-up-workspaces.py` manually if needed.
+
+## ⚖️ Legal pages (Impressum, Privacy Policy, Terms of Use)
+
+Every page shows **Impressum**, **Privacy Policy** and **Terms of Use** links at
+the bottom of the sidebar, and the GDPR consent banner links to the privacy
+policy. By default these point to the centrally maintained official OpenMS pages
+(`https://openms.de/impressum`, `/privacy`, `/terms`).
+
+If you self-host a fork, override them in `settings.json` — an Impressum must
+name the **actual operator**, not OpenMS:
+
+```json
+"legal_links": {
+    "impressum": "https://your-domain.example/impressum",
+    "privacy": "https://your-domain.example/privacy",
+    "terms": "https://your-domain.example/terms"
+}
+```
+
+Any link you omit falls back to its OpenMS default. The `privacy` URL is reused
+for the consent banner's privacy-policy link, so consent and policy stay in sync.
+
+## Documentation
+
+Documentation for **users** and **developers** is included as pages in [this template app](https://abi-services.cs.uni-tuebingen.de/streamlit-template/), indicated by the 📖 icon.
+
+## Citation
+
+Please cite:
+Müller, T. D., Siraj, A., et al. OpenMS WebApps: Building User-Friendly Solutions for MS Analysis. Journal of Proteome Research (2025). [https://doi.org/10.1021/acs.jproteome.4c00872](https://doi.org/10.1021/acs.jproteome.4c00872)
+
+## References
+
+- Pfeuffer, J., Bielow, C., Wein, S. et al. OpenMS 3 enables reproducible analysis of large-scale mass spectrometry data. Nat Methods 21, 365–367 (2024). [https://doi.org/10.1038/s41592-024-02197-7](https://doi.org/10.1038/s41592-024-02197-7)
+
+- Röst HL, Schmitt U, Aebersold R, Malmström L. pyOpenMS: a Python-based interface to the OpenMS mass-spectrometry algorithm library. Proteomics. 2014 Jan;14(1):74-7. [https://doi.org/10.1002/pmic.201300246](https://doi.org/10.1002/pmic.201300246). PMID: [24420968](https://pubmed.ncbi.nlm.nih.gov/24420968/).
 
 

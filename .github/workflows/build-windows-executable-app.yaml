@@ -1,13 +1,29 @@
 name: Build executable for Windows
 on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  release:
+    types: [created]
   workflow_dispatch:
   
+# Add permissions block to allow upload to releases
+permissions:
+  contents: write
+
 env:
-  OPENMS_VERSION: 3.5.0 
+  OPENMS_VERSION: 3.5.0
+  # Override to pin contrib to a specific release when OPENMS_VERSION is a non-release branch (e.g. "develop").
+  # Leave empty to use OPENMS_VERSION.
+  OPENMS_CONTRIB_VERSION: ""
+  PYTHON_VERSION: 3.11.0
+  # Name of the installer
+  APP_NAME: OpenMS-StreamlitTemplateApp
   # Define unique GUID for UpgradeCode
-  APP_UpgradeCode: "c1c7c11f-b063-4100-9854-af555d1b26d1"
+  APP_UpgradeCode: "8d28e8c7-45dc-446c-b889-99a6aea2f1a5"
   # Define needed TOPP tools here
-  TOPP_TOOLS: "OpenNuXL"
+  TOPP_TOOLS: "FeatureFinderMetabo FeatureLinkerUnlabeledKD SiriusExport"
 
 jobs:
   build-openms:
@@ -43,7 +59,7 @@ jobs:
         ## GH CLI "SHOULD BE" installed. Sometimes I had to manually install nonetheless. Super weird.
         # https://github.com/actions/runner-images/blob/main/images/win/scripts/Installers/Install-GitHub-CLI.ps1
         echo "C:/Program Files (x86)/GitHub CLI" >> $GITHUB_PATH
-        
+
     - name: Extract branch/PR infos
       shell: bash
       run: |
@@ -60,7 +76,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/OpenMS/contrib
-        key: ${{ runner.os }}-contrib3
+        key: ${{ runner.os }}-contrib-${{ env.OPENMS_CONTRIB_VERSION || env.OPENMS_VERSION }}
 
     - name: Load contrib build
       if: steps.cache-contrib-win.outputs.cache-hit != 'true'
@@ -69,7 +85,7 @@ jobs:
       run: |
         cd OpenMS/contrib
         # Download the file using the URL fetched from GitHub
-        gh release download -R OpenMS/contrib --pattern 'contrib_build-Windows.tar.gz'
+        gh release download release/${{ env.OPENMS_CONTRIB_VERSION || env.OPENMS_VERSION }} -R OpenMS/contrib --pattern 'contrib_build-Windows.tar.gz'
         # Extract the archive
         7z x -so contrib_build-Windows.tar.gz | 7z x -si -ttar
         rm contrib_build-Windows.tar.gz
@@ -91,7 +107,7 @@ jobs:
           ${{ runner.os }}-ccache-${{ env.RUN_NAME }}
           ${{ runner.os }}-ccache-${{ env.BASE_REF }}
           ${{ runner.os }}-ccache-
-          
+
     - name: Add THIRDPARTY
       shell: bash
       run: |
@@ -109,7 +125,7 @@ jobs:
           do
             echo $thirdpartytool >> $GITHUB_PATH
           done
-          
+
     - name: Build Windows
       shell: bash
       run: |
@@ -163,28 +179,22 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: openms-package
-        path: |
-          #${{ github.workspace }}/OpenMS/bld/bin/*
-          #${{ github.workspace }}/_thirdparty/*
-          ${{ github.workspace }}/OpenMS/bld/bin/OpenNuXL.exe
-          ${{ github.workspace }}/OpenMS/bld/bin/FileConverter.exe
-          ${{ github.workspace }}/OpenMS/bld/bin/PercolatorAdapter.exe
-          ${{ github.workspace }}/OpenMS/bld/bin/*.dll
-          ${{ github.workspace }}/_thirdparty/*.exe
-          ${{ github.workspace }}/_thirdparty/ThermoRawFileParser/**
-          ${{ github.workspace }}/_thirdparty/Percolator/**
-              
+        path: ${{ github.workspace }}/OpenMS/bld/*.zip
+
   build-executable:
     runs-on: windows-2022
-    needs: build-openms
-
-    env:
-      PYTHON_VERSION: 3.10.0
-      APP_NAME: OpenMS-NuXLApp
+    needs: build-openms  
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Set Version in settings.json
+      run: |
+        $VERSION="${{ github.event.release.tag_name }}"
+        $content = Get-Content -Raw settings.json | ConvertFrom-Json
+        $content.version = $VERSION
+        $content | ConvertTo-Json -Depth 100 | Set-Content settings.json
 
     - name: Download package as artifact
       uses: actions/download-artifact@v4
@@ -192,37 +202,15 @@ jobs:
         name: openms-package
         path: openms-package
 
-    - name: List files in openms-package
-      run: |
-        ls -R openms-package
-
     - name: Extract bin and share from package
       run: |
-        mkdir -p openms-bin
-        cp -r openms-package/OpenMS/bld/bin/* openms-bin/ || echo "No files to copy from openms-package/OpenMS/bld/bin"
-        mkdir -p openms-thirdparty
-        cp -r openms-package/_thirdparty/* openms-thirdparty/ || echo "No files to copy from openms-package/_thirdparty"
-        
-        #cp -r share ../share
-        #cp -r openms-package/bin ../openms-bin
-        #cp -r openms-package/share ../share
+        cd openms-package
+        unzip "*.zip" -d .
+        cp -r openms-package/bin ../openms-bin
+        cp -r openms-package/share ../share
 
-    - name: Download and unzip dlls
-      run: |
-        curl -L -o dlls_for_windows.zip https://github.com/Arslan-Siraj/nuxl_webapp_supporting_files/releases/download/v0.0.1/dlls_for_windows.zip
-        unzip dlls_for_windows.zip -d dlls_windows
-        cp -r dlls_windows/dlls_for_windows/* openms-bin/
-
-    - name: List files in openms-bin
-      run: |
-        ls -R openms-bin
-
-    - name: List files in openms-thirdparty
-      run: |
-        ls -R openms-thirdparty
-    
     - name: Set up Python (regular distribution)
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }} # Use the same version as the embeddable version
     
@@ -235,12 +223,14 @@ jobs:
         curl -O https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/python-${{ env.PYTHON_VERSION }}-embed-amd64.zip
         unzip python-${{ env.PYTHON_VERSION }}-embed-amd64.zip -d python-${{ env.PYTHON_VERSION }}
         rm python-${{ env.PYTHON_VERSION }}-embed-amd64.zip
+
         # Define paths for the regular Python distribution and the embeddable distribution
         $PYTHON_DIR="${{ runner.tool_cache }}/Python/${{ env.PYTHON_VERSION }}/x64" # Path from actions/setup-python
         $EMBED_DIR="python-${{ env.PYTHON_VERSION }}"
         
         mkdir -p $EMBED_DIR/Lib/site-packages/tkinter
         mkdir -p $EMBED_DIR/tcl
+
         # Copy necessary Tkinter files from the regular Python distribution
         cp -r $PYTHON_DIR/Lib/tkinter/* $EMBED_DIR/Lib/site-packages/tkinter/
         cp -r $PYTHON_DIR/tcl/* $EMBED_DIR/tcl/
@@ -248,18 +238,30 @@ jobs:
         cp $PYTHON_DIR/DLLs/tcl86t.dll $EMBED_DIR/
         cp $PYTHON_DIR/DLLs/tk86t.dll $EMBED_DIR/
 
-    - name: Install pip
+    - name: Uncomment 'import site' in python311._pth file
       run: |
-        curl -O https://bootstrap.pypa.io/get-pip.py
-        ./python-${{ env.PYTHON_VERSION }}/python get-pip.py --no-warn-script-location
-        rm get-pip.py
-
-    - name: Uncomment 'import site' in python310._pth file
-      run: |
-        sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python310._pth
+        sed -i 's/#import site/import site/' python-${{ env.PYTHON_VERSION }}/python311._pth
 
     - name: Install Required Packages
-      run: .\python-${{ env.PYTHON_VERSION }}\python -m pip install --force-reinstall -r requirements.txt --no-warn-script-location
+      # Use system Python (which has development headers) to compile packages,
+      # installing into the embeddable Python's site-packages directory.
+      # The embeddable Python lacks Python.h headers needed for native extensions.
+      run: python -m pip install -r requirements.txt --target python-${{ env.PYTHON_VERSION }}/Lib/site-packages --upgrade --no-warn-script-location
+
+    - name: Clean up unnecessary Python files
+      shell: pwsh
+      run: |
+        $sitePkgs = "python-${{ env.PYTHON_VERSION }}/Lib/site-packages"
+
+        # Remove __pycache__ directories
+        Get-ChildItem -Path $sitePkgs -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+
+        # Remove test directories
+        Get-ChildItem -Path $sitePkgs -Recurse -Directory | Where-Object { $_.Name -match "^tests?$" } | Remove-Item -Recurse -Force
+
+        # Count remaining files
+        $count = (Get-ChildItem -Path $sitePkgs -Recurse -File).Count
+        Write-Host "Remaining files in site-packages: $count"
 
     - name: Set to offline deployment
       run: |
@@ -269,52 +271,75 @@ jobs:
 
     - name: Create .bat file
       run: |
-          echo " start /min .\python-${{ env.PYTHON_VERSION }}\python -m streamlit run app.py local" > ${{ env.APP_NAME }}.bat
+        echo '@echo off' > ${{ env.APP_NAME }}.bat
+        echo 'setlocal EnableDelayedExpansion' > ${{ env.APP_NAME }}.bat
+        echo '' >> ${{ env.APP_NAME }}.bat
+        echo 'REM Set OpenMS data path for TOPP tools' >> ${{ env.APP_NAME }}.bat
+        echo 'set OPENMS_DATA_PATH=%~dp0share\OpenMS' >> ${{ env.APP_NAME }}.bat
+        echo '' >> ${{ env.APP_NAME }}.bat
+        echo 'REM Add each subfolder in share\OpenMS\THIRDPARTY to PATH' >> ${{ env.APP_NAME }}.bat
+        echo 'for /D %%D in ("%OPENMS_DATA_PATH%\THIRDPARTY\*") do (' >> ${{ env.APP_NAME }}.bat
+        echo '    set "PATH=!PATH!;%%D"' >> ${{ env.APP_NAME }}.bat
+        echo ')' >> ${{ env.APP_NAME }}.bat
+        echo '' >> ${{ env.APP_NAME }}.bat
+        echo 'REM Create .streamlit directory in user''s home if it doesn''t exist' >> ${{ env.APP_NAME }}.bat
+        echo 'if not exist "%USERPROFILE%\.streamlit" mkdir "%USERPROFILE%\.streamlit"' >> ${{ env.APP_NAME }}.bat
+        echo '' >> ${{ env.APP_NAME }}.bat
+        echo 'REM Create credentials.toml with empty email to disable email prompt' >> ${{ env.APP_NAME }}.bat
+        echo 'copy /Y ".streamlit\credentials.toml" "%USERPROFILE%\.streamlit\credentials.toml" > nul' >> ${{ env.APP_NAME }}.bat
+        echo '' >> ${{ env.APP_NAME }}.bat
+        echo 'start /min .\python-${{ env.PYTHON_VERSION }}\python -m streamlit run app.py local' >> ${{ env.APP_NAME }}.bat
 
     - name: Create All-in-one executable folder
       run: |
-        if (Test-Path -Path "streamlit_exe") {
-            Remove-Item -Recurse -Force "streamlit_exe"
-        }
-        
         mkdir streamlit_exe
+
         mv python-${{ env.PYTHON_VERSION }} streamlit_exe
         cp -r src streamlit_exe
+        cp -r utils streamlit_exe
         cp -r content streamlit_exe
+        cp -r docs streamlit_exe
         cp -r assets streamlit_exe
         cp -r example-data streamlit_exe
+        cp openms-bin/*.dll streamlit_exe
         cp -r .streamlit streamlit_exe
+        cp -r share streamlit_exe/share
         cp app.py streamlit_exe
         cp settings.json streamlit_exe
+        cp default-parameters.json streamlit_exe
         cp ${{ env.APP_NAME }}.bat streamlit_exe
-        cp -r openms-bin streamlit_exe
-        cp -r openms-thirdparty streamlit_exe
 
-        #$files = $env:TOPP_TOOLS -split ' '
-        #foreach ($file in $files) {
-        #  Copy-Item "openms-bin/${file}.exe" -Destination "streamlit_exe/${file}.exe"
-        #}
+        $files = $env:TOPP_TOOLS -split ' '
+        foreach ($file in $files) {
+          Copy-Item "openms-bin/${file}.exe" -Destination "streamlit_exe/${file}.exe"
+        }
+
+    - name: Remove server address for local Windows deployment
+      run: |
+        (Get-Content streamlit_exe/.streamlit/config.toml) -notmatch '^address' | Set-Content streamlit_exe/.streamlit/config.toml
 
     - name: Generate Readme.txt
       shell: bash
       run: |
         cat <<EOF > streamlit_exe/Readme.txt
         Welcome to ${{ env.APP_NAME }} app!
+
         To launch the application:
         1. Navigate to the installation directory.
         2. Double-click on the file: ${{ env.APP_NAME }}.bat or ${{ env.APP_NAME }} shortcut.
+
         Additional Information:
         - If multiple Streamlit apps are running, you can change the port in the .streamlit/config.toml file.
           Example:
             [server]
             port = 8502
+
         Reach out to us:
         - Join our Discord server for support and community discussions: https://discord.com/invite/4TAGhqJ7s5
         - Contribute or stay updated with the latest OpenMS web app developments on GitHub: https://github.com/OpenMS/streamlit-template
-        - Checkout the ${{ env.APP_NAME }} on Github: https://github.com/Arslan-Siraj/nuxl-app
         - Visit our website for more information: https://openms.de/
         
-        Thanks for using ${{ env.APP_NAME }}!
+        Thank you for using ${{ env.APP_NAME }}!
         EOF
         
     - name: Install WiX Toolset
@@ -336,16 +361,12 @@ jobs:
 
     - name: Prepare SourceDir
       run: |
-        if (Test-Path -Path "SourceDir") {
-            Remove-Item -Recurse -Force "SourceDir"
-        }
-        
         mkdir SourceDir
         mv streamlit_exe/* SourceDir
         cp ShowSuccessMessage.vbs SourceDir
         cp assets/openms_license.rtf SourceDir
-        # Logo of app : from https://www.xiconeditor.com/
-        cp assets/openNuXL.ico SourceDir
+        # Logo of app
+        cp assets/openms.ico SourceDir
         
     - name: Generate WiX XML file
       shell: bash
@@ -355,7 +376,7 @@ jobs:
         <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
           <Product Id="*" Name="${{ env.APP_NAME }}" Language="1033" Version="1.0.0.0" Codepage="1252" Manufacturer="OpenMS Developer Team" UpgradeCode="${{ env.APP_UpgradeCode }}">
             <Package Id="*" InstallerVersion="300" Compressed="yes" InstallPrivileges="elevated" Platform="x64" />
-            <Media Id="1" Cabinet="streamlit.cab" EmbedCab="yes" />
+            <MediaTemplate EmbedCab="yes" MaximumUncompressedMediaSize="200" CabinetTemplate="data{0}.cab" />
         
             <!-- Folder structure -->
             <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
@@ -394,7 +415,7 @@ jobs:
             </Component>
         
             <!-- Provide icon here; it should exist in the SourceDir folder -->
-            <Icon Id="AppIcon" SourceFile="SourceDir/openNuXL.ico" />
+            <Icon Id="AppIcon" SourceFile="SourceDir/openms.ico" />
         
             <!-- Run app directly after installation -->
             <!-- <CustomAction Id="RunApp" Directory="AppSubFolder" Execute="deferred" Return="asyncNoWait" Impersonate="no"
@@ -423,7 +444,7 @@ jobs:
           </Product>
         </Wix>
         EOF
-        
+
     - name: Build .wixobj file with candle.exe
       run: |
         ./wix/candle.exe streamlit_exe.wxs streamlit_exe_files.wxs
@@ -442,3 +463,10 @@ jobs:
         name: OpenMS-App
         path: |
           OpenMS-App.zip
+
+    - name: Upload Artifact as Release Asset
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: OpenMS-App.zip
+        token: ${{ github.token }}
