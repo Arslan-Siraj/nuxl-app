@@ -15,3 +15,7 @@ psutil==7.2.1
 #xlsxwriter
 ## for pyopenms nightly
 # --index-url https://pypi.cs.uni-tuebingen.de/simple/
+
+# Redis Queue dependencies (for online mode)
+redis>=5.0.0
+rq>=1.16.0
