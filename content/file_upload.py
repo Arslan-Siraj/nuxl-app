@@ -1,208 +1,133 @@
 from pathlib import Path
+
 import streamlit as st
 import pandas as pd
-from src.common import *
-from src.fileupload import *
-from src.captcha_ import *
-from src.result_files import *
+
+from src.common.common import (
+    page_setup,
+    save_params,
+    v_space,
+    show_table,
+    TK_AVAILABLE,
+    tk_directory_dialog,
+)
+from src import fileupload
 
 params = page_setup()
 
-# If run in hosted mode, show captcha as long as it has not been solved
-if 'controllo' not in st.session_state or params["controllo"] == False:
-    # Apply captcha by calling the captcha_control function
-    captcha_control()        
+st.title("File Upload")
 
-### main content of page
+# Check if there are any files in the workspace
+mzML_dir = Path(st.session_state.workspace, "mzML-files")
+if not any(Path(mzML_dir).iterdir()):
+    # No files present, load example data
+    fileupload.load_example_mzML_files()
 
-# Make sure "selected-mzML-files" is in session state
-if "selected-mzML-files" not in st.session_state:
-    st.session_state["selected-mzML-files"] = params["selected-mzML-files"]
+tabs = ["File Upload"]
+if st.session_state.location == "local":
+    tabs.append("Files from local folder")
 
-# Make sure "selected-fasta-files" is in session state
-if "selected-fasta-files" not in st.session_state:
-    st.session_state["selected-fasta-files"] = params.get("selected-fasta-files", [])
-
-if "selected-result-files" not in st.session_state:
-    st.session_state["selected-result-files"] = params.get("selected-result-files", [])
-
-#title of page
-st.title("📂 File Upload")
-
-#directories of current session state : "mzML-files", "fasta-files"
-mzML_dir: Path = Path(st.session_state.workspace, "mzML-files")
-fasta_dir: Path = Path(st.session_state.workspace, "fasta-files")
-example_data_dir: Path = Path(st.session_state.workspace, "example-data-files")
-
-#tabs on page
-tabs = ["mzML/raw files", "Fasta files", "Load example files"]
 tabs = st.tabs(tabs)
 
-#mzML/raw files tab
 with tabs[0]:
-    #create form of mzML-upload
     with st.form("mzML-upload", clear_on_submit=True):
-        if st.session_state.location == "local":
-            #create file uploader to take mzML files
-            files = st.file_uploader(
-                "Upload mzML/raw files", accept_multiple_files=(st.session_state.location == "local"), type=['.mzML', '.raw'], help="Input file (Valid formats: 'mzML' or 'raw')  accept multiples")
-        else:
-             files = st.file_uploader(
-                "Upload mzML/raw files", accept_multiple_files=(st.session_state.location == "local"), type=['.mzML', '.raw'], help="Input file (Valid formats: 'mzML' or 'raw')")
-        
-        cols = st.columns(3)
-        #file uploader submit button
-        if cols[1].form_submit_button("Add mzML/raw file to workspace", type="primary"):
-            if not files:
-                st.warning("Upload some files first.")
-            else:
-                save_uploaded_mzML(files)
-
-    #load example mzML files to current session state
-    #load_example_mzML_files() 
-
-    if any(Path(mzML_dir).iterdir()):
-        v_space(2)
-        # Display all mzML files currently in workspace
-        file_names_ = [f.name for f in Path(mzML_dir).iterdir()]
-        df = pd.DataFrame(
-            {"file name": [item for item in file_names_ if not (item.endswith(".csv") or item.endswith(".mgf"))]})
-        st.markdown("##### mzML/raw files in current workspace:")
-        show_table(df)
-        v_space(1)
-        # Remove files
-        mzML_dir: Path = Path(st.session_state.workspace, "mzML-files")
-        with st.expander("🗑️ Remove uploaded mzML/raw files"):
-            to_remove = st.multiselect("select mzML/raw files",
-                                    options=[f.name for f in sorted(mzML_dir.iterdir())])
-            
-            #st.code(to_remove)
-            
-            c1, c2 = st.columns(2)
-            #Remove selected files
-            if c2.button("Remove **selected**", type="primary", disabled=not any(to_remove)):
-                remove_selected_mzML_files(to_remove)
-                st.rerun()
-            #Remove all files
-            if c1.button("⚠️ Remove **all**", disabled=not any(mzML_dir.iterdir())):
-                remove_all_mzML_files()
-                st.rerun()
-
-#fasta files tab
-with tabs[1]:
-    #create form of fasta-upload
-    with st.form("fasta-upload", clear_on_submit=True):
-        #create file uploader to take fasta files
         files = st.file_uploader(
-            "Upload fasta file", accept_multiple_files=(st.session_state.location == "local"), type=['.fasta'], help="Input file (Valid formats: 'fasta')")
+            "mzML files", accept_multiple_files=(st.session_state.location == "local")
+        )
         cols = st.columns(3)
-        #file uploader submit button
-        if cols[1].form_submit_button("Add fasta to workspace", type="primary"):
-            if not files:
-                st.warning("Upload some files first.")
+        if cols[1].form_submit_button("Add files to workspace", type="primary"):
+            if files:
+                fileupload.save_uploaded_mzML(files)
             else:
-                save_uploaded_fasta(files)
+                st.warning("Select files first.")
 
-    #load example fasta files to current session state
-    #load_example_fasta_files()
+# Local file upload option: via directory path
+if st.session_state.location == "local":
+    with tabs[1]:
+        st_cols = st.columns([0.05, 0.95], gap="small")
+        with st_cols[0]:
+            st.write("\n")
+            st.write("\n")
+            dialog_button = st.button(
+                "📁",
+                key="local_browse",
+                help="Browse for your local directory with MS data.",
+                disabled=not TK_AVAILABLE,
+            )
+            if dialog_button:
+                st.session_state["local_dir"] = tk_directory_dialog(
+                    "Select directory with your MS data",
+                    st.session_state["previous_dir"],
+                )
+                st.session_state["previous_dir"] = st.session_state["local_dir"]
+        with st_cols[1]:
+            # with st.form("local-file-upload"):
+            local_mzML_dir = st.text_input(
+                "path to folder with mzML files", value=st.session_state["local_dir"]
+            )
+        # raw string for file paths
+        local_mzML_dir = rf"{local_mzML_dir}"
+        cols = st.columns([0.65, 0.3, 0.4, 0.25], gap="small")
+        copy_button = cols[1].button(
+            "Copy files to workspace", type="primary", disabled=(local_mzML_dir == "")
+        )
+        use_copy = cols[2].checkbox(
+            "Make a copy of files",
+            key="local_browse-copy_files",
+            value=True,
+            help="Create a copy of files in workspace.",
+        )
+        if not use_copy:
+            st.warning(
+                "**Warning**: You have deselected the `Make a copy of files` option. "
+                "This **_assumes you know what you are doing_**. "
+                "This means that the original files will be used instead. "
+            )
+        if copy_button:
+            fileupload.copy_local_mzML_files_from_directory(local_mzML_dir, use_copy)
 
-    if any(Path(fasta_dir).iterdir()):
-        v_space(2)
-        # Display all fasta files currently in workspace
-        df = pd.DataFrame(
-            {"file name": [f.name for f in Path(fasta_dir).iterdir()]})
-        st.markdown("##### fasta files in current workspace:")
-        show_table(df)
-        v_space(1)
-        # Remove files
-        with st.expander("🗑️ Remove uploaded fasta files"):
-            to_remove = st.multiselect("select fasta files",
-                                    options=[f.stem for f in sorted(fasta_dir.iterdir())])
-            c1, c2 = st.columns(2)
-            #Remove selected files
-            if c2.button("Remove **selected** from workspace", type="primary", disabled=not any(to_remove)):
-                remove_selected_fasta_files(to_remove)
-                st.rerun()
-            #Remove all files
-            if c1.button("⚠️ Remove **all** from workspace", disabled=not any(fasta_dir.iterdir())):
-                remove_all_fasta_files()
-                st.rerun()
+if any(Path(mzML_dir).iterdir()):
+    v_space(2)
+    # Display all mzML files currently in workspace
+    df = pd.DataFrame(
+        {
+            "file name": [
+                f.name
+                for f in Path(mzML_dir).iterdir()
+                if "external_files.txt" not in f.name
+            ]
+        }
+    )
 
-with tabs[2]:
+    # Check if local files are available
+    external_files = Path(mzML_dir, "external_files.txt")
+    if external_files.exists():
+        with open(external_files, "r") as f_handle:
+            external_files = f_handle.readlines()
+            external_files = [f.strip() for f in external_files]
+            df = pd.concat(
+                [df, pd.DataFrame({"file name": external_files})], ignore_index=True
+            )
 
-    def function_to_load_example_data():
-        import requests
-        import io
-        import zipfile
+    st.markdown("##### mzML files in current workspace:")
+    show_table(df)
+    v_space(1)
+    # Remove files
+    with st.expander("🗑️ Remove mzML files"):
+        to_remove = st.multiselect(
+            "select mzML files", options=[f.stem for f in sorted(mzML_dir.iterdir())]
+        )
+        c1, c2 = st.columns(2)
+        if c2.button(
+            "Remove **selected**", type="primary", disabled=not any(to_remove)
+        ):
+            params = fileupload.remove_selected_mzML_files(to_remove, params)
+            save_params(params)
+            st.rerun()
 
-        zip_url = "https://github.com/Arslan-Siraj/NuXL_rescore_resources/releases/download/0.0.2/RNA_DEB_Protein_NA_XL_example_files.zip"
+        if c1.button("⚠️ Remove **all**", disabled=not any(mzML_dir.iterdir())):
+            params = fileupload.remove_all_mzML_files(params)
+            save_params(params)
+            st.rerun()
 
-        st.info("Downloading example data files...")
-
-        # Progress bar
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        zip_buffer = io.BytesIO()
-        with requests.get(zip_url, timeout=500, stream=True) as r:
-            r.raise_for_status()
-            total_size = int(r.headers.get("Content-Length", 0))
-            downloaded = 0
-            for chunk in r.iter_content(chunk_size=8192):
-                if chunk:
-                    zip_buffer.write(chunk)
-                    downloaded += len(chunk)
-                    if total_size > 0:
-                        percent = int(downloaded * 100 / total_size)
-                        progress_bar.progress(percent)
-                        status_text.text(f"Downloading... {percent}%")
-
-        status_text.text("Extracting files...")
-        zip_buffer.seek(0)
-        with zipfile.ZipFile(zip_buffer) as z:
-            for member in z.infolist():
-                # Skip directories
-                if member.is_dir():
-                    continue
-                
-                # Take only the file name and add prefix
-                original_name = Path(member.filename).name
-                member_filename = f"example_{original_name}"
-                
-                # Define target path
-                target_path = example_data_dir / member_filename
-                
-                # Extract and write file
-                with z.open(member) as source, open(target_path, "wb") as target:
-                    target.write(source.read())
-        
-        # copy extracted files to their desired spaces
-        load_example_mzML_files()
-        load_example_fasta_files()
-        load_example_result_files()
-        st.rerun()
-
-        progress_bar.progress(100)
-        status_text.text("Done!")
-        
-    # Check if folder is empty
-    if not any(Path(example_data_dir).iterdir()):
-        if st.button("Load all example data to workspace", type="primary"):
-            function_to_load_example_data()
-    else:
-        st.info("Example files are already loaded in the workspace.")
-    
-        if any(Path(example_data_dir).iterdir()):
-            v_space(1)
-            # Display all mzML files currently in workspace
-            file_names_ = [f.name for f in Path(example_data_dir).iterdir()]
-            df = pd.DataFrame(
-                {"file name": [item for item in file_names_ if not (item.endswith(".txt"))]})
-            st.markdown("##### These files should be available in workspace: ")
-            show_table(df)
-            v_space(1)
-
-            if st.button("Reload example data files to workspace", type="primary", help="This will overwrite existing example files in the workspace."):
-                function_to_load_example_data()
-            
 save_params(params)
