@@ -7,7 +7,7 @@ import streamlit as st
 import pyopenms as poms
 from src.common.common import show_fig, display_large_dataframe
 from typing import Union
-
+import matplotlib.pyplot as plt
 
 def get_df(file: Union[str, Path]) -> pd.DataFrame:
     """
@@ -325,3 +325,87 @@ def view_bpc_tic():
     )
     fig = plot_bpc_tic()
     show_fig(fig, f"BPC-TIC-{st.session_state.view_selected_file}")
+
+def plot_FDR_plot(idXML_id, idXML_extra, exp_name= "FileName", FDR_level=10):
+    """
+    FDR plot of two input idXML identification files
+    idXML_id: without extra feature
+    idXML_extra: with extra feature
+    FDR_level: 10 for 0.01, 20 for 0.02, 100 for 1.0
+    """
+
+    # ---------- Without extra features ----------
+    protein_ids = []
+    peptide_ids = []
+    poms.IdXMLFile().load(idXML_id, protein_ids, peptide_ids)
+
+    Psm_score_list = []
+    for pep_id in peptide_ids:
+        for hit in pep_id.getHits():
+            Psm_score_list.append(float(hit.getScore()))
+
+    list_results = []
+    q_values = []
+    x = -0.0002
+    for _ in range(10001):
+        list_results.append(sum(j < x for j in Psm_score_list))
+        q_values.append(x)
+        x += 0.0001
+
+    # ---------- With extra features ----------
+    protein_ids_extra = []
+    peptide_ids_extra = []
+    poms.IdXMLFile().load(idXML_extra, protein_ids_extra, peptide_ids_extra)
+
+    Psm_score_list_extra = []
+    for pep_id in peptide_ids_extra:
+        for hit in pep_id.getHits():
+            Psm_score_list_extra.append(float(hit.getScore()))
+
+    list_results_extra = []
+    q_values_extra = []
+    x = -0.0002
+    len_3000 = 0
+
+    for i in range(100001):
+        values = sum(j < x for j in Psm_score_list_extra)
+        list_results_extra.append(values)
+        q_values_extra.append(x)
+        x += 0.0001
+        if i == 3000:
+            len_3000 = values
+
+    psms_count_1_per_solely = np.sum(np.array(Psm_score_list) < 0.01)
+    psms_count_1_per_extra = np.sum(np.array(Psm_score_list_extra) < 0.01)
+
+     # ---------- Plot ----------
+    fig, ax = plt.subplots(figsize=(8, 7))
+
+    ax.plot(q_values, list_results,
+            color="red", label="no extra feat", linewidth=1.0)
+    ax.plot(q_values_extra, list_results_extra,
+            color="blue", label="extra feat", linewidth=1.0)
+
+    ax.axvline(x=0.01, color="green", linewidth=1.0)
+    ax.set_title(f"{exp_name}\nNuXL: {psms_count_1_per_solely} +extra: {psms_count_1_per_extra} CSMs at 1% CSM-level FDR", fontsize=12)
+    ax.set_xlabel("CSM-level q-value", fontsize=12)
+    ax.set_ylabel("no. of CSMs", fontsize=12)
+
+    if FDR_level == 10:
+        ax.set_xlim(-0.01, 0.1)
+        ax.set_ylim(0, len_3000)
+    elif FDR_level == 20:
+        ax.set_xlim(-0.01, 0.2) 
+        ax.set_ylim(0, len_3000)
+    elif FDR_level == 100:
+        ax.set_xlim(-0.01, 1.0)    
+    
+    ax.legend()
+
+    # ---------- Save figure (no os used) ----------
+    output_pdf = idXML_extra.replace(".idXML", "") + "_rescore_comparsion.pdf"
+    fig.savefig(output_pdf, format="pdf", bbox_inches="tight")
+
+    # ---------- Render in Streamlit ----------
+    #st.pyplot(fig)
+    return fig, output_pdf
