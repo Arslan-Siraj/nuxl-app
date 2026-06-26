@@ -661,7 +661,7 @@ def render_sidebar(page: str = "") -> None:
                             st.rerun()
 
             # Demo workspace loader for online mode
-            if st.session_state.location == "online":
+            """if st.session_state.location == "online":
                 available_demos = get_available_demo_workspaces()
                 if available_demos:
                     with st.expander("🎮 **Demo Data**"):
@@ -760,7 +760,7 @@ def render_sidebar(page: str = "") -> None:
                             with col2:
                                 if st.button("Cancel", key="cancel-save-demo"):
                                     st.session_state["show_admin_password_dialog"] = False
-                                    st.rerun()
+                                    st.rerun()"""
 
         # All pages have settings, workflow indicator and logo
         with st.expander("⚙️ **Settings**"):
