@@ -134,6 +134,7 @@ COPY clean-up-workspaces.py /app/clean-up-workspaces.py
 COPY settings.json /app/settings.json
 COPY hooks/ /app/hooks
 COPY gdpr_consent/ /app/gdpr_consent
+COPY default-parameters.json /app/default-parameters.json
 
 RUN echo "0 3 * * * /root/miniforge3/envs/streamlit-env/bin/python /app/clean-up-workspaces.py >> /app/clean-up-workspaces.log 2>&1" | crontab -
 
