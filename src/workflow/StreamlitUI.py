@@ -1623,7 +1623,7 @@ Started: {status.get('started_at', 'N/A')}""")
         if len(python) > 0:
             markdown.append("**Python Scripts**")
             dict_to_markdown(python)
-        return " ".join(markdown)
+        return "\n".join(markdown)
 
     def export_parameters_markdown(self):
         markdown = []

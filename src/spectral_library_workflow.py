@@ -72,7 +72,9 @@ class Workflow(WorkflowManager):
                 "Available idXML files in workspace. "
                 "Only NuXL Percolator out 1% idXML files containing `_perc_0.0100` are shown. "
                 "For each selected MS file, the workflow automatically expects the matching "
-                "`_perc_0.0100_XLs.idXML` and `_perc_0.0100_peptides.idXML` files."
+                "`_perc_0.0100_XLs.idXML` and `_perc_0.0100_peptides.idXML` files. "
+                "If RDDF identifications are enabled, the workflow uses the matching "
+                "`RDDF_*_perc_0.0100_XLs.idXML` file for cross-links."
             ),
         )
 
@@ -325,6 +327,18 @@ class Workflow(WorkflowManager):
             help="Run OpenMS FileInfo on each selected mzML/raw file and include output in the workflow log.",
         )
 
+        self.ui.input_widget(
+            key="use_rddf_identifications",
+            default=False,
+            name="Use RDDF identifications",
+            widget_type="checkbox",
+            help=(
+                "Use cross-link identifications rescored with data-driven features. "
+                "When enabled, the workflow uses RDDF_*_perc_0.0100_XLs.idXML for "
+                "cross-links and the normal *_perc_0.0100_peptides.idXML for peptides."
+            ),
+        )
+
     def show_execution_section(self) -> None:
         self.ui.export_parameters_markdown = self._safe_export_parameters_markdown
 
@@ -387,18 +401,32 @@ class Workflow(WorkflowManager):
         output_folder = result_dir / library_name
         output_folder.mkdir(parents=True, exist_ok=True)
 
+        use_rddf_identifications = bool(
+            self.params.get("use_rddf_identifications", False)
+        )
+
         matched_idxmls, missing_reports = self._match_required_idxml_files(
             mzml_files=mzml_files,
             idxml_files=idxml_files,
+            use_rddf_identifications=use_rddf_identifications,
         )
 
         if missing_reports:
             for report in missing_reports:
-                self.logger.log(
-                    f"ERROR: Missing NuXL results for '{report['mzML']}': "
-                    f"{report['missing']}. Please run NuXL first or exclude "
-                    "this mzML/raw file."
-                )
+                if use_rddf_identifications:
+                    self.logger.log(
+                        f"ERROR: RDDF identifications were requested, but the required "
+                        f"rescored cross-link file was not found for '{report['mzML']}': "
+                        f"{report['missing']}. Please run the Rescoring workflow first, "
+                        f"or disable 'Use RDDF identifications' to generate the library "
+                        f"from the original NuXL identifications."
+                    )
+                else:
+                    self.logger.log(
+                        f"ERROR: Missing NuXL results for '{report['mzML']}': "
+                        f"{report['missing']}. Please run NuXL first or exclude "
+                        "this mzML/raw file."
+                    )
             return False
 
         if not matched_idxmls:
@@ -438,6 +466,7 @@ class Workflow(WorkflowManager):
             mzml_files=mzml_files,
             matched_idxmls=matched_idxmls,
             msfragger_library=msfragger_library,
+            use_rddf_identifications=use_rddf_identifications,
         )
 
         exclude_files = set()
@@ -534,6 +563,11 @@ class Workflow(WorkflowManager):
         #   <basename>_perc_0.0100_XLs.idXML
         #   <basename>_perc_0.0100_peptides.idXML
         # Hide/sync no 0.1000, 1.0000, non-percolator, feature, or old perc files.
+        # Do not sync RDDF peptide files. Peptides should always come from the
+        # normal NuXL *_perc_0.0100_peptides.idXML output.
+        if file_name.startswith("RDDF_") and "_peptides" in file_name:
+            return False
+
         if "_perc_0.0100" not in file_name:
             return False
 
@@ -563,6 +597,7 @@ class Workflow(WorkflowManager):
         self,
         mzml_files: list[str],
         idxml_files: list[str],
+        use_rddf_identifications: bool = False,
     ) -> tuple[list[str], list[dict[str, str]]]:
         idxml_by_name = {Path(f).name: f for f in idxml_files}
         matched_idxmls: list[str] = []
@@ -570,13 +605,16 @@ class Workflow(WorkflowManager):
 
         for mzml_file in mzml_files:
             basename = Path(mzml_file).stem
-            expected = {basename + suffix for suffix in REQUIRED_IDXML_SUFFIXES}
-            found = {
-                name
-                for name in idxml_by_name
-                if name.startswith(basename)
-                and any(name.endswith(suffix) for suffix in REQUIRED_IDXML_SUFFIXES)
-            }
+
+            peptide_name = f"{basename}_perc_0.0100_peptides.idXML"
+
+            if use_rddf_identifications:
+                xls_name = f"RDDF_{basename}_perc_0.0100_XLs.idXML"
+            else:
+                xls_name = f"{basename}_perc_0.0100_XLs.idXML"
+
+            expected = {xls_name, peptide_name}
+            found = {name for name in expected if name in idxml_by_name}
 
             if found != expected:
                 missing = expected - found
@@ -587,7 +625,8 @@ class Workflow(WorkflowManager):
                     }
                 )
             else:
-                matched_idxmls.extend(idxml_by_name[name] for name in sorted(expected))
+                matched_idxmls.append(idxml_by_name[xls_name])
+                matched_idxmls.append(idxml_by_name[peptide_name])
 
         return matched_idxmls, missing_reports
 
@@ -701,6 +740,7 @@ class Workflow(WorkflowManager):
         mzml_files: list[str],
         matched_idxmls: list[str],
         msfragger_library: str | None,
+        use_rddf_identifications: bool,
     ) -> Path:
         log_file = output_folder / f"{library_name}_library_generation.log"
 
@@ -728,6 +768,7 @@ class Workflow(WorkflowManager):
             handle.write("\n===== parameters =====\n")
             handle.write(f"Library name: {library_name}\n")
             handle.write(f"MSFragger iRT reference: {msfragger_library or 'None'}\n")
+            handle.write(f"Use RDDF identifications: {use_rddf_identifications}\n")
             handle.write(
                 "iRT calibration model: "
                 f"{self.params.get('irt_calibration_model', 'linear')}\n"
@@ -966,6 +1007,9 @@ class Workflow(WorkflowManager):
             matched_idxmls, missing_reports = self._match_required_idxml_files(
                 mzml_files=resolved_ms_files,
                 idxml_files=available_idxml_files,
+                use_rddf_identifications=bool(
+                    params.get("use_rddf_identifications", False)
+                ),
             )
 
             if matched_idxmls:
@@ -988,6 +1032,7 @@ class Workflow(WorkflowManager):
             msfragger_library = "None"
 
         run_fileinfo = params.get("run_fileinfo", True)
+        use_rddf_identifications = params.get("use_rddf_identifications", False)
         irt_model = params.get("irt_calibration_model", "linear")
 
         try:
@@ -1036,8 +1081,17 @@ class Workflow(WorkflowManager):
             f"> MS file(s): **{', '.join(ms_file_names)}**",
             f"> idXML files: **{', '.join(idxml_file_names)}**",
             f"> Optional MSFragger iRT library: **{Path(str(msfragger_library)).name if msfragger_library != 'None' else 'None'}**",
-            f"> iRT calibration model: **{irt_model}**",
-            f"> Run mzML FileInfo: **{run_fileinfo}**",
-            "",
+            f"> Use RDDF identifications: **{use_rddf_identifications}**",
         ]
+
+        if msfragger_library != "None":
+            lines.append(f"> iRT calibration model: **{irt_model}**")
+
+        lines.extend(
+            [
+                f"> Run mzML FileInfo: **{run_fileinfo}**",
+                "",
+            ]
+        )
+
         return "\n".join(lines)
