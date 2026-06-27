@@ -112,11 +112,11 @@ def annotation_matches_filter_v(annotation: str, ion_filter: str) -> bool:
         return False
     if ion_filter == "all_annotated_peaks":
         return True
-    if ion_filter == "b_ions":
+    if ion_filter == "only_b_ions":
         return annotation.startswith("b")
-    if ion_filter == "y_ions":
+    if ion_filter == "only_y_ions":
         return annotation.startswith("y")
-    if ion_filter == "MI_ions":
+    if ion_filter == "only_MI_ions":
         return annotation.startswith("MI")
     return True
 
@@ -249,9 +249,9 @@ with tabs[0]:
                         "Annotated peaks",
                         options=[
                             "all_annotated_peaks",
-                            "b_ions",
-                            "y_ions",
-                            "MI_ions",
+                            "only_b_ions",
+                            "only_y_ions",
+                            "only_MI_ions",
                         ],
                         index=0,
                         help=(
