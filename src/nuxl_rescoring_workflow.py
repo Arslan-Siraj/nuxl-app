@@ -439,7 +439,7 @@ class Workflow(WorkflowManager):
                 "This workflow takes NuXL search-engine output from protein–nucleic acid "
                 "cross-link identification [2] and adapts a data-driven rescoring pipeline "
                 f"using predicted retention time and fragment-ion intensity features ({rescore_url}) [3]. "
-                "These additional features improve discrimination between correct and incorrect "
+                "These additional data-driven features improve discrimination between correct and incorrect "
                 "matches and can increase identification confidence with Percolator."
             ),
             "",
@@ -1148,10 +1148,18 @@ class Workflow(WorkflowManager):
             """
         )
 
+        all_log_path = Path(self.workflow_dir, "logs", "all.log")
+        if all_log_path.exists():
+            all_log_content = all_log_path.read_text(encoding="utf-8", errors="replace")
+        else:
+            all_log_content = "No workflow all.log file was available."
+
         with open(log_file_path, "w", encoding="utf-8") as handle:
             handle.write(search_param)
+            handle.write("\n\n======= Full workflow log =======\n")
+            handle.write(all_log_content)
 
-        self.logger.log(f"Wrote rescoring log: {log_file_path}")
+        self.logger.log(f"Wrote rescoring log with full workflow log: {log_file_path}")
         return log_file_path
 
     def _zip_rescoring_outputs(self, result_dir: Path) -> Path:

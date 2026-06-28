@@ -159,7 +159,10 @@ class CommandExecutor:
         if process.returncode != 0:
             # Write buffered stderr to minimal log only on failure
             for line in stderr_buffer:
-                self.logger.log(f"STDERR: {line}", 0)
+                if any(level in line for level in [" - INFO - ", " - DEBUG - "]):
+                    self.logger.log(line, 0)
+                else:
+                    self.logger.log(f"STDERR: {line}", 0)
             self.logger.log(f"ERROR: Command failed with exit code {process.returncode}: {command[0]}", 0)
             return False
         return True
@@ -196,8 +199,12 @@ class CommandExecutor:
                     if line:
                         stderr_line = line.rstrip()
                         stderr_buffer.append(stderr_line)
-                        # Log to detailed log only during execution
-                        self.logger.log(f"STDERR: {stderr_line}", 2)
+                        # Log to detailed log only during execution.
+                        # Python logging uses stderr by default, even for normal INFO messages.
+                        if any(level in stderr_line for level in [" - INFO - ", " - DEBUG - "]):
+                            self.logger.log(stderr_line, 2)
+                        else:
+                            self.logger.log(f"STDERR: {stderr_line}", 2)
                     if process.poll() is not None:
                         break
             except Exception as e:

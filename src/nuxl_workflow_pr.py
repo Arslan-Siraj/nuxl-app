@@ -1,5 +1,7 @@
 import ast
 import os
+import textwrap
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -250,6 +252,9 @@ class Workflow(WorkflowManager):
             set_results_dir="nuxl-search",
         )
 
+        result_dir = Path(out_idxml[0]).parent
+        protocol_name = Path(in_ms[0]).stem
+
         self.logger.log(f"Number of MS input files: {len(in_ms)}")
         self.logger.log(f"FASTA database: {database[0]}")
 
@@ -312,10 +317,97 @@ class Workflow(WorkflowManager):
 
         if not success:
             self.logger.log("ERROR: NuXL search failed.")
+            self._write_search_log(
+                result_dir=result_dir,
+                protocol_name=protocol_name,
+                mzml_files=in_ms,
+                database_file=database[0],
+                custom_params=custom_params,
+                success=False,
+            )
             return False
 
         self.logger.log("NuXL search completed successfully.")
+
+        self._write_search_log(
+            result_dir=result_dir,
+            protocol_name=protocol_name,
+            mzml_files=in_ms,
+            database_file=database[0],
+            custom_params=custom_params,
+            success=True,
+        )
+
         return True
+
+    def _write_search_log(
+        self,
+        result_dir: Path,
+        protocol_name: str,
+        mzml_files: list[str],
+        database_file: str,
+        custom_params: dict,
+        success: bool,
+    ) -> Path:
+        time_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file_path = result_dir / f"{protocol_name}_nuxl_search_log_{time_stamp}.txt"
+
+        try:
+            settings = st.session_state.get("settings", {})
+            openms_version = settings.get("openms-version", "unknown")
+            app_version = settings.get("version", "unknown")
+        except Exception:
+            openms_version = "unknown"
+            app_version = "unknown"
+
+        all_log_path = Path(self.workflow_dir, "logs", "all.log")
+        if all_log_path.exists():
+            all_log_content = all_log_path.read_text(encoding="utf-8", errors="replace")
+        else:
+            all_log_content = "No workflow all.log file was available."
+
+        search_param = textwrap.dedent(
+            f"""\
+            ======= versions ==========
+            OpenMS version: {openms_version}
+            NuXLApp version: {app_version}
+
+            ======= Search Parameters ==========
+            Selected mzML/raw File(s):
+            {chr(10).join(str(file) for file in mzml_files)}
+
+            Selected FASTA File: {database_file}
+
+            Preset: {custom_params.get("NuXL:presets")}
+            Oligonucleotide Length: {custom_params.get("NuXL:length")}
+            Scoring Method: {custom_params.get("NuXL:scoring")}
+
+            Precursor Mass Tolerance: {custom_params.get("precursor:mass_tolerance")} {custom_params.get("precursor:mass_tolerance_unit")}
+            Fragment Mass Tolerance: {custom_params.get("fragment:mass_tolerance")} {custom_params.get("fragment:mass_tolerance_unit")}
+
+            Enzyme: {custom_params.get("peptide:enzyme")}
+            Missed Cleavages: {custom_params.get("peptide:missed_cleavages")}
+            Peptide Min Length: {custom_params.get("peptide:min_size")}
+            Peptide Max Length: {custom_params.get("peptide:max_size")}
+
+            Variable Modifications: {", ".join(custom_params.get("modifications:variable", [])) or "None"}
+            Fixed Modifications: {", ".join(custom_params.get("modifications:fixed", [])) or "None"}
+            Variable Max Modifications per Peptide: {custom_params.get("modifications:variable_max_per_peptide")}
+
+            Peptide FDR: {custom_params.get("report:peptideFDR")}
+            XL FDR: {custom_params.get("report:xlFDR")}
+
+            Workflow success: {success}
+            """
+        )
+
+        with open(log_file_path, "w", encoding="utf-8") as handle:
+            handle.write(search_param)
+            handle.write("\n\n======= Full workflow log =======\n")
+            handle.write(all_log_content)
+
+        self.logger.log(f"Wrote NuXL search log with full workflow log: {log_file_path}")
+        return log_file_path
 
     @st.fragment
     def results(self) -> None:

@@ -14,6 +14,40 @@ import zipfile
 from datetime import datetime
 
 
+SUPPRESSED_LOG_PATTERNS = [
+    "qt.network.ssl",
+    "UserWarning:",
+    "WARNING:tensorflow:",
+    "warnings.warn(",
+    "Warnings.warn(",
+    "from pkg_resources",
+    "pkg_resources is deprecated",
+    "OPENMS_DATA_PATH",
+    "tensorflow/",
+    "Could not find cuda drivers",
+    "GPU will not be used",
+    "NUMA node",
+    "cuda",
+    "To enable the following instructions",
+    "FutureWarning",
+    "x = re.sub(pattern, '', string_)",
+]
+
+
+def _filter_display_log_lines(lines: list[str]) -> list[str]:
+    """
+    Hide noisy dependency/runtime warning lines from the Streamlit log display.
+
+    The original log files are not modified. This only filters what is shown
+    in the workflow Run tab.
+    """
+    return [
+        line
+        for line in lines
+        if not any(pattern in line for pattern in SUPPRESSED_LOG_PATTERNS)
+    ]
+
+
 from src.common.common import (
     OS_PLATFORM,
     TK_AVAILABLE,
@@ -1466,6 +1500,9 @@ class StreamlitUI:
                         display_lines = lines
                     else:
                         display_lines = lines[-st.session_state.log_lines_count:]
+
+                    display_lines = _filter_display_log_lines(display_lines)
+
                     st.code(
                         "".join(display_lines),
                         language="neon",
@@ -1495,6 +1532,9 @@ class StreamlitUI:
                 display_lines = lines
             else:
                 display_lines = lines[-st.session_state.log_lines_count:]
+
+            display_lines = _filter_display_log_lines(display_lines)
+
             st.code("".join(display_lines), language="neon", line_numbers=False)
 
     def _show_queue_status(self, status: dict) -> None:

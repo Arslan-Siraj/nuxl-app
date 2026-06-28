@@ -752,6 +752,12 @@ class Workflow(WorkflowManager):
             openms_version = "unknown"
             app_version = "unknown"
 
+        all_log_path = Path(self.workflow_dir, "logs", "all.log")
+        if all_log_path.exists():
+            all_log_content = all_log_path.read_text(encoding="utf-8", errors="replace")
+        else:
+            all_log_content = "No workflow all.log file was available."
+
         with open(log_file, "w", encoding="utf-8") as handle:
             handle.write("===== version info =====\n")
             handle.write(f"OpenMS version: {openms_version}\n")
@@ -774,7 +780,10 @@ class Workflow(WorkflowManager):
                 f"{self.params.get('irt_calibration_model', 'linear')}\n"
             )
 
-        self.logger.log(f"Wrote spectral-library log: {log_file}")
+            handle.write("\n===== Full workflow log =====\n")
+            handle.write(all_log_content)
+
+        self.logger.log(f"Wrote spectral-library log with full workflow log: {log_file}")
         return log_file
 
     def _zip_output_folder(
