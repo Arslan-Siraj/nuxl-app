@@ -6,7 +6,7 @@ params = page_setup()
 
 wf = Workflow()
 
-st.title('⚙️ Run NuXL Search Engine', 
+st.title('⚙️ NuXL Search Engine', 
          help="Run NuXL search engine to analyze protein-RNA/DNA cross-linking samples. ref: https://doi.org/10.1093/nar/gkaf727"
         )
 

@@ -6,7 +6,7 @@ params = page_setup()
 
 wf = Workflow()
 
-st.title('⚙️ Rescoring Workflow',
+st.title('⚙️ Rescoring with Data-Driven Features from Machine Learning Models',
          help="Rescoring with Data-Driven Features from Machine Learning Models. Rescoring refers to the post-processing of initial identification results "
         "to improve discrimination between correct and incorrect matches by "
         "incorporating additional evidence, such as predicted retention time or "
