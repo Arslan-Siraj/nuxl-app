@@ -109,38 +109,94 @@ def copy_local_result_files_from_directory(local_result_directory: str) -> None:
         add_to_result(f.name) 
     #st.success("Successfully added local files!")
 
-def save_uploaded_result(uploaded_files: list[bytes]) -> None:
+def save_uploaded_result(uploaded_files) -> None:
     """
     Saves uploaded result files to the result-files directory.
 
-    Args:
-        uploaded_files (List[bytes]): List of uploaded result files (idXML and tsv).
+    In local mode, Streamlit returns a list of files.
+    In online mode, Streamlit returns one file.
+    This function supports both cases.
 
-    Returns:
-        None
+    Valid formats: .idXML and .tsv
     """
 
     result_dir: Path = Path(st.session_state.workspace, "result-files")
+    result_dir.mkdir(parents=True, exist_ok=True)
 
-    # A list of files is required, since online allows only single upload, create a list
-    if st.session_state.location == "online":
+    if uploaded_files is None:
+        st.warning("Upload some files first.")
+        return
+
+    # local mode gives a list; online mode gives a single UploadedFile
+    if not isinstance(uploaded_files, list):
         uploaded_files = [uploaded_files]
 
-    # If no files are uploaded, exit early
+    if len(uploaded_files) == 0:
+        st.warning("Upload some files first.")
+        return
+
+    error_files = []
+    success_files = []
+    already_files = []
+
+    existing_files = {existing_file.name for existing_file in result_dir.iterdir()}
+
     for f in uploaded_files:
         if f is None:
             st.warning("Upload some files first.")
             return
-        
-    # Write files from buffer to workspace mzML directory, add to selected files
-    for f in uploaded_files:
-        #check if file not in result_dir and extension with .idXML/.tsv
-        if f.name not in [f.name for f in result_dir.iterdir()] and (f.name.endswith(".idXML") or f.name.endswith(".tsv")):
+
+        if f.name in existing_files:
+            already_files.append(f.name)
+            continue
+
+        if f.name.endswith(".idXML") or f.name.endswith(".tsv"):
             with open(Path(result_dir, f.name), "wb") as fh:
                 fh.write(f.getbuffer())
-        #add to selected result files in session 
-        add_to_result(Path(f.name).stem)
-    st.success("Successfully added uploaded files!")
+
+            add_to_result(Path(f.name).stem)
+            success_files.append(f.name)
+            existing_files.add(f.name)
+        else:
+            error_files.append(f.name)
+
+    if len(error_files) > 0:
+        if len(error_files) == 1:
+            st.error(
+                f"Error: The file '{error_files[0]}' has an invalid extension. "
+                "Only .idXML and .tsv files are accepted."
+            )
+        else:
+            st.error(
+                "**Error: These files have an invalid extension. "
+                "Only .idXML and .tsv files are accepted:**\n\n"
+                + "\n".join([f"- {file}" for file in error_files])
+            )
+
+    if len(already_files) > 0:
+        if len(already_files) == 1:
+            st.warning(
+                f"**The file '{already_files[0]}' already exists!** "
+                "Please delete it before reuploading if necessary."
+            )
+        else:
+            st.warning(
+                "**The following files already exist!**\n"
+                "Please delete them before reuploading if necessary:\n\n"
+                + "\n".join([f"- {file}" for file in already_files])
+            )
+
+    if len(success_files) > 0:
+        if len(success_files) == 1:
+            if st.session_state.location == "local":
+                st.success(f"This file '{success_files[0]}' successfully uploaded.")
+            else:
+                st.success("Successfully added uploaded file!")
+        else:
+            st.success(
+                "**These files are successfully uploaded:**\n\n"
+                + "\n".join([f"- {file}" for file in success_files])
+            )
 
 def add_this_result_file(to_add: str, from_path: Path)-> None:
     """

@@ -20,80 +20,96 @@ def add_to_selected_mzML(filename: str):
     
 
 #@st.cache_data
-def save_uploaded_mzML(uploaded_files: list[bytes]) -> None:
+def save_uploaded_mzML(uploaded_files) -> None:
     """
-    Saves uploaded mzML files to the mzML directory.
+    Saves uploaded mzML/raw files to the mzML directory.
 
-    Args:
-        uploaded_files (List[bytes]): List of uploaded mzML files.
-
-    Returns:
-        None
+    In local mode, Streamlit returns a list of files.
+    In online mode, Streamlit returns one file.
+    This function supports both cases.
     """
-    # A list of files is required, since online allows only single upload, create a list
-    if st.session_state.location == "online":
+
+    mzML_dir: Path = Path(st.session_state.workspace, "mzML-files")
+    mzML_dir.mkdir(parents=True, exist_ok=True)
+
+    if uploaded_files is None:
+        st.warning("Upload some files first.")
+        return
+
+    # Keep online behavior working, but also support local multi-upload.
+    if not isinstance(uploaded_files, list):
         uploaded_files = [uploaded_files]
-    # If no files are uploaded, exit early
+
+    if len(uploaded_files) == 0:
+        st.warning("Upload some files first.")
+        return
+
+    error_files = []
+    success_files = []
+    already_files = []
+
+    existing_files = {existing_file.name for existing_file in mzML_dir.iterdir()}
+
     for f in uploaded_files:
         if f is None:
             st.warning("Upload some files first.")
             return
-        
-    error_files = []
-    success_files = []
-    already_files = []
-    for f in uploaded_files:
-        mzML_dir: Path = Path(st.session_state.workspace, "mzML-files")
-        #st.info(f"file-name {f.name}")
-        #st.info(f"mzML-files directory:  {[f.name for f in mzML_dir.iterdir()]}")
 
         # Check if the file ends with an invalid extension
         if f.name.endswith(".raw.mzML"):
             error_files.append(f.name)
             continue
-        
-        if f.name in [f.name for f in mzML_dir.iterdir()]:
+
+        if f.name in existing_files:
             already_files.append(f.name)
             continue
 
-        if f.name not in [f.name for f in mzML_dir.iterdir()] and (f.name.endswith("mzML") or f.name.endswith("raw")):
+        if f.name.endswith("mzML") or f.name.endswith("raw"):
             with open(Path(mzML_dir, f.name), "wb") as fh:
                 fh.write(f.getbuffer())
+
             add_to_selected_mzML(Path(f.name).stem)
             success_files.append(f.name)
-        
-        #st.error(f"error_files:  {[f for f in error_files]}")
-        #st.success(f"success_files:  {[f for f in success_files]}")
-        #st.warning(f"already_files:  {[f for f in already_files]}")
-
-    
-    if len(error_files)>0:
-        if len(error_files)==1:
-            st.error(f"Error: The file '{error_files[0]}' has an invalid extension (.raw.mzML is not acceptable).")
+            existing_files.add(f.name)
         else:
-            st.error( f"**Error: These files has an invalid extension (.raw.mzML is not acceptable).**\n\n" +
-                "\n".join([f"- {file}" for file in error_files]))
-    
+            error_files.append(f.name)
+
+    if len(error_files) > 0:
+        if len(error_files) == 1:
+            st.error(
+                f"Error: The file '{error_files[0]}' has an invalid extension "
+                "(.raw.mzML is not acceptable)."
+            )
+        else:
+            st.error(
+                "**Error: These files have an invalid extension "
+                "(.raw.mzML is not acceptable).**\n\n"
+                + "\n".join([f"- {file}" for file in error_files])
+            )
+
     if len(already_files) > 0:
         if len(already_files) == 1:
-            st.warning(f"**The file '{already_files[0]}' already exists!** Please delete it before reuploading if necessary.")
+            st.warning(
+                f"**The file '{already_files[0]}' already exists!** "
+                "Please delete it before reuploading if necessary."
+            )
         else:
             st.warning(
-                f"**The following files already exist!**\n"
-                f"Please delete them before reuploading if necessary:\n\n" +
-                "\n".join([f"- {file}" for file in already_files])
+                "**The following files already exist!**\n"
+                "Please delete them before reuploading if necessary:\n\n"
+                + "\n".join([f"- {file}" for file in already_files])
             )
-    
-    if len(success_files)>0:
-        if len(success_files)==1:
+
+    if len(success_files) > 0:
+        if len(success_files) == 1:
             if st.session_state.location == "local":
                 st.success(f"This file '{success_files[0]}' successfully uploaded.")
             else:
                 st.success("Successfully added uploaded file!")
         else:
             st.success(
-                f"**These files are successfully uploaded:**\n\n" +
-                "\n".join([f"- {file}" for file in success_files])
+                "**These files are successfully uploaded:**\n\n"
+                + "\n".join([f"- {file}" for file in success_files])
             )
             
 
@@ -218,64 +234,91 @@ def add_to_selected_fasta(filename: str):
 
 
 #@st.cache_data
-def save_uploaded_fasta(uploaded_files: list[bytes]) -> None:
+def save_uploaded_fasta(uploaded_files) -> None:
     """
     Saves uploaded fasta files to the fasta directory.
 
-    Args:
-        uploaded_files (List[bytes]): List of uploaded fasta files.
-
-    Returns:
-        None
+    In local mode, Streamlit returns a list of files.
+    In online mode, Streamlit returns one file.
+    This function supports both cases.
     """
-    fasta_dir: Path = Path(st.session_state.workspace, "fasta-files")
 
-    # A list of files is required, since online allows only single upload, create a list
-    if st.session_state.location == "online":
+    fasta_dir: Path = Path(st.session_state.workspace, "fasta-files")
+    fasta_dir.mkdir(parents=True, exist_ok=True)
+
+    if uploaded_files is None:
+        st.warning("Upload some files first.")
+        return
+
+    # Keep online behavior working, but also support local multi-upload.
+    if not isinstance(uploaded_files, list):
         uploaded_files = [uploaded_files]
+
+    if len(uploaded_files) == 0:
+        st.warning("Upload some files first.")
+        return
 
     already_files = []
     success_files = []
-    # If no files are uploaded, exit early
+    error_files = []
+
+    existing_files = {existing_file.name for existing_file in fasta_dir.iterdir()}
+
     for f in uploaded_files:
         if f is None:
             st.warning("Upload some files first.")
             return
-        
-    # Write files from buffer to workspace fasta directory, add to selected files
-    for f in uploaded_files:
 
-        if f.name in [f.name for f in fasta_dir.iterdir()]:
-            #print(fasta_dir.iterdir())
+        if f.name in existing_files:
             already_files.append(f.name)
             continue
-            
-        if f.name not in [f.name for f in fasta_dir.iterdir()] and f.name.endswith("fasta"):
+
+        if f.name.endswith("fasta"):
             with open(Path(fasta_dir, f.name), "wb") as fh:
                 fh.write(f.getbuffer())
+
             add_to_selected_fasta(Path(f.name).stem)
             success_files.append(f.name)
+            existing_files.add(f.name)
+        else:
+            error_files.append(f.name)
+
+    if len(error_files) > 0:
+        if len(error_files) == 1:
+            st.error(
+                f"Error: The file '{error_files[0]}' has an invalid extension. "
+                "Only .fasta files are accepted."
+            )
+        else:
+            st.error(
+                "**Error: These files have an invalid extension. "
+                "Only .fasta files are accepted:**\n\n"
+                + "\n".join([f"- {file}" for file in error_files])
+            )
 
     if len(already_files) > 0:
         if len(already_files) == 1:
-            st.warning(f"**The file '{already_files[0]}' already exists!** Please delete it before reuploading if necessary.")
+            st.warning(
+                f"**The file '{already_files[0]}' already exists!** "
+                "Please delete it before reuploading if necessary."
+            )
         else:
             st.warning(
-                f"**The following files already exist!**\n"
-                f"Please delete them before reuploading if necessary:\n\n" +
-                "\n".join([f"- {file}" for file in already_files])
+                "**The following files already exist!**\n"
+                "Please delete them before reuploading if necessary:\n\n"
+                + "\n".join([f"- {file}" for file in already_files])
             )
-    
-    if len(success_files)>0:
-        if len(success_files)==1:
+
+    if len(success_files) > 0:
+        if len(success_files) == 1:
             if st.session_state.location == "local":
                 st.success(f"This file '{success_files[0]}' successfully uploaded.")
             else:
                 st.success("Successfully added uploaded file!")
         else:
             st.success(
-                f"**These files are successfully uploaded:**\n\n" +
-                "\n".join([f"- {file}" for file in success_files])
+                "**These files are successfully uploaded:**\n\n"
+                + "\n".join([f"- {file}" for file in success_files])
             )
 
 
