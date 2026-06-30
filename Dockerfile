@@ -127,6 +127,7 @@ ENV PORT=${PORT}
 WORKDIR /app
 COPY app.py /app/app.py
 COPY src/ /app/src
+COPY docs/ /app/docs
 COPY assets/ /app/assets
 COPY example-data/ /app/example-data
 COPY content/ /app/content
