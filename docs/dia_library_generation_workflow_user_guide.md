@@ -12,7 +12,7 @@ Use this workflow when user want to generate a DIA spectral library from NuXL DD
 
 ## 1. Files
 
-![Files-Tab Library](docs/images/library_files.png)
+![Files-Tab Library](images/library_files.png)
 
 📁 The **Files** tab is used to make MS files, NuXL idXML result files, and optional MSFragger library files available for DIA library generation.
 
@@ -77,7 +77,7 @@ If no MSFragger TSV file is selected, DIA library generation still runs without 
 
 ## 2. Configure
 
-![Configure-Tab Library](docs/images/library_config.png)
+![Configure-Tab Library](images/library_config.png)
 
 The **Configure** tab is used to select MS files and configure library generation options.
 
@@ -231,7 +231,7 @@ The peptide idXML file is always taken from the original NuXL peptide output:
 
 ## 3. Run
 
-![Run-Tab Library](docs/images/library_run.png)
+![Run-Tab Library](images/library_run.png)
 
 🚀 The **Run** tab is used to start, monitor, and stop the DIA library generation workflow.
 
@@ -279,7 +279,7 @@ If the log becomes very long, you can choose fewer lines to show only the most r
 
 #### When the workflow finishes
 
-![Output Library](docs/images/library_out.png)
+![Output Library](images/library_out.png)
 
 ✅ When the workflow completes successfully, the library output files become available for download and are also available in the Results page.
 

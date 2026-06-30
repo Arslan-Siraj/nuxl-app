@@ -31,9 +31,12 @@ page = cols[0].selectbox(
 )
 
 
-def render_markdown_with_local_images(markdown_content: str) -> None:
+def render_markdown_with_local_images(markdown_content: str, markdown_dir: Path) -> None:
     """
     Render Markdown content and display local Markdown images with st.image().
+
+    Image paths are resolved relative to the Markdown file location.
+    This allows the same Markdown image paths to work in GitHub and Streamlit.
     """
 
     image_pattern = r"!\[(.*?)\]\((.*?)\)"
@@ -48,7 +51,9 @@ def render_markdown_with_local_images(markdown_content: str) -> None:
 
         if i + 2 < len(parts):
             alt_text = parts[i + 1]
-            image_path = Path(parts[i + 2])
+            image_src = parts[i + 2]
+
+            image_path = markdown_dir / image_src
 
             if image_path.exists():
                 st.image(
@@ -62,7 +67,9 @@ def render_markdown_with_local_images(markdown_content: str) -> None:
         i += 3
 
 
-with open(pages[page], "r", encoding="utf-8") as f:
+md_path = pages[page]
+
+with open(md_path, "r", encoding="utf-8") as f:
     content = f.read()
 
-render_markdown_with_local_images(content)
+render_markdown_with_local_images(content, md_path.parent)
