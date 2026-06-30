@@ -12,7 +12,7 @@ Use this workflow when user want to search `.mzML` or `.raw` MS data against a F
 
 ## 1. Files
 
-![Files-Tab NuXL](docs/images/nuxl_files.png)
+![Files-Tab NuXL](images/nuxl_files.png)
 
 📁 The **Files** tab is used to make MS files and FASTA databases available for the NuXL workflow.
 
@@ -55,7 +55,7 @@ The **Download files** button can be used to download files that are available i
 
 ## 2. Configure
 
-![Config-Tab NuXL](docs/images/nuxl_config.png)
+![Config-Tab NuXL](images/nuxl_config.png)
 
 
 The **Configure** tab is used to select the input files and define the NuXL search parameters.
@@ -127,7 +127,7 @@ example_Ecoli_SwPr_canon_20220310_4400seq_MQ2030contaminants.fasta
 
 ## 3. Run
 
-![Run-Tab NuXL](docs/images/nuxl_run.png)
+![Run-Tab NuXL](images/nuxl_run.png)
 
 
 🚀 The **Run** tab is used to start, monitor, and stop the NuXL search.
@@ -158,7 +158,7 @@ After the workflow is configured, this tab shows the execution controls and the 
 
 #### When the workflow finishes
 
-![Results output NuXL](docs/images/nuxl_out.png)
+![Results output NuXL](images/nuxl_out.png)
 
 
 ✅ When the workflow completes successfully, the NuXL output files become available for download, visualization, and are also available in the Results page.

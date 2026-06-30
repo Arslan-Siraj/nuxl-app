@@ -10,7 +10,7 @@ The **NuXL Rescoring Workflow** improves NuXL cross-link identifications by usin
 
 ## 1. Files
 
-![Files-Tab Rescoring](docs/images/rescoring_simple_file.png)
+![Files-Tab Rescoring](images/rescoring_simple_file.png)
 
 📁 User need **initial NuXL idXML file**. This should be the original NuXL search result before Percolator/FDR filtering.
 
@@ -40,7 +40,7 @@ If your file is rejected, check that it is the original NuXL idXML output and no
 
 ### 2. Configure
 
-![Configure-Tab Rescoring](docs/images/rescoring_config.png)
+![Configure-Tab Rescoring](images/rescoring_config.png)
 
 #### Choose a file for rescoring
 
@@ -147,7 +147,7 @@ These features should be annotated in the `idXML` file and used for rescoring in
 
 This section explains the **Run** tab of the NuXL Rescoring Workflow.
 
-![Run-Tab Rescoring](docs/images/rescoring_run.png)
+![Run-Tab Rescoring](images/rescoring_run.png)
 
 🚀 The **Run** tab is used to start, monitor, and stop the rescoring analysis.After the workflow is configured, this tab shows the execution controls and the live workflow log. Also could download the result files immidiatly.
 
@@ -177,7 +177,7 @@ This section explains the **Run** tab of the NuXL Rescoring Workflow.
 
 #### When the workflow finishes
 
-![Output Rescoring](docs/images/out_rescoring.png)
+![Output Rescoring](images/out_rescoring.png)
 
 ✅ When the workflow completes successfully, the output files become available for download, visulization and are also available in the Results page. The download folder contains, identification files (with `RDDF_` prefix), PseudoROC if generated, and log file. If the PseudoROC plot success, it will also display after log.
 
