@@ -34,21 +34,24 @@ Your uploaded files will be shown on the same **File Upload** page in  **mzML fi
 
 Users can download the example files from **Load example file** tab to current workspace.
 
-### 2. ⚙️ Analyze your uploaded data
+### 2. ⚙️ Run NuXL search engine
 
-Select the `.mzML/.raw` and `.fasta` files for analysis, configure user settings including NuXL advanced parameters, and start the analysis using the **Run-analysis** button.
+Select the `.mzML/.raw` and `.fasta` files for analysis, configure user settings including NuXL advanced parameters, and start the analysis. Once the analysis completed successfully, the output table will be displayed on the page, along with downloadable links for crosslink identification files for that particular analysis.
 
-Once the analysis completed successfully, the output table will be displayed on the page, along with downloadable links for crosslink identification files for that particular analysis.
+👉  checkout the doc: [NuXL search engine user-guide](https://github.com/Arslan-Siraj/nuxl-app/blob/main/docs/nuxl_workflow_user_guide.md)
+
 
 ### 3. ⚙️ Rescoring
-Select without FDR-controlled `.idXML` file from output of NuXL search engine. The name of file pattern is `(raw or mzML file_name).idXML`. If the NuxL search engine succesfully run, the file will showup here. After including the features start the analysis using the **Run-rescoring** button.
+Select without FDR-controlled `.idXML` file from output of NuXL search engine. The name of file pattern is `(raw or mzML file_name).idXML`. If the NuxL search engine succesfully run, the file will showup here. After including the features start the analysis. Once the analysis completed successfully, the comparison PseudoROC curve at CSM-level FDR will generated, and available for download.
 
-Once the analysis completed successfully, the comparison PseudoROC curve at CSM-level FDR will generated, and available for download.
+👉  checkout the doc: [Rescoring user-guide](https://github.com/Arslan-Siraj/nuxl-app/blob/main/docs/rescoring_workflow_user_guide.md)
+
 
 ### 4. ⚙️ DIA spectra library generation
-Select the experiments with (`.mzML`) it will extract the identified protein-NA and peptides from NuXL output at 1% CSM-level FDR, available in `.idXML` files. Optionally, user can do iRT alignment by providing MSFragger `library.tsv`, with `linear` or `piecewise` calibration mode.
+Select the experiments with (`.mzML`) it will extract the identified protein-NA and peptides from NuXL output at 1% CSM-level FDR, available in `.idXML` files. Optionally, user can do iRT alignment by providing MSFragger `library.tsv`, with `linear` or `piecewise` calibration mode. User can see the real-time log of spectral library generation and download the output files.
 
-User can see the real-time log of spectral library generation and download the output files.
+👉  checkout the doc: [DIA spectral library generation user-guide](https://github.com/Arslan-Siraj/nuxl-app/blob/main/docs/dia_library_generation_workflow_user_guide.md)
+
 
 ### 5. 📊 View your results
 Here, user can visualize and explore the output of the search engine. All crosslink output files in the workspace are available on the **View Results** tab.
