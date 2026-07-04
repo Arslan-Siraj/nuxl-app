@@ -1,5 +1,5 @@
 #!/bin/bash
-# Entrypoint for the streamlit-template container.
+# Entrypoint for the nuxl-app container.
 #
 # Designed to run under both Docker and Apptainer/Singularity. Apptainer
 # mounts the container filesystem read-only by default, so anything that
