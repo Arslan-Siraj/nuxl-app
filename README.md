@@ -7,7 +7,7 @@
 ## Table of content
 
 - [Description](#description)
-- [How to do analysis](#how-todo-analyis)
+- [How to do analysis?](#how-todo-analyis)
 - [Access NuXLApp](#access-nuxlapp)
 - [Legal Information](#legal-information)
 - [Citation](#citation)
