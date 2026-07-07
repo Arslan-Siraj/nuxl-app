@@ -102,15 +102,15 @@ jobs:
 
       - name: Retag for kind (image name the kustomize overlay points at)
         run: |
-          # The prod overlay sets `newName: ghcr.io/openms/nuxl-app`,
+          # The prod overlay sets `newName: ghcr.io/arslan-siraj/nuxl-app`,
           # `newTag: main-full`. The rendered manifests reference that exact
           # ref, so we need it loaded into kind under that name. Tag invariant
           # across branches/variants so the test always works.
           FIRST_TAG=$(printf '%s\n' "${{ steps.meta.outputs.tags }}" | head -n 1)
-          docker tag "$FIRST_TAG" ghcr.io/openms/nuxl-app:main-full
+          docker tag "$FIRST_TAG" ghcr.io/arslan-siraj/nuxl-app:main-full
 
       - name: Save image as tar
-        run: docker save ghcr.io/openms/nuxl-app:main-full -o /tmp/image.tar
+        run: docker save ghcr.io/arslan-siraj/nuxl-app:main-full -o /tmp/image.tar
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4

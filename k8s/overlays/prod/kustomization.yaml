@@ -14,7 +14,7 @@ commonLabels:
 
 images:
   - name: openms-streamlit
-    newName: ghcr.io/openms/nuxl-app
+    newName: ghcr.io/arslan-siraj/nuxl-app
     newTag: main-full
 
 patches:
