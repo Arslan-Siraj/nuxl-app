@@ -1,6 +1,7 @@
 import ast
 import json
 import os
+import re
 import shutil
 import textwrap
 import zipfile
@@ -563,8 +564,18 @@ class Workflow(WorkflowManager):
         if percolator_executable:
             custom_params["percolator_executable"] = percolator_executable
 
-        variable_mods = self.params.get("modifications:variable", [])
-        fixed_mods = self.params.get("modifications:fixed", [])
+        variable_mods = self._normalise_modification_values(
+            self.params.get("modifications:variable", [])
+        )
+        fixed_mods = self._normalise_modification_values(
+            self.params.get("modifications:fixed", [])
+        )
+
+        # Store the normalized OpenMS identifiers back into self.params so the
+        # execution log does not contain UI-only labels such as
+        # "Oxidation (M) [+15.994915 Da]".
+        self.params["modifications:variable"] = variable_mods
+        self.params["modifications:fixed"] = fixed_mods
 
         if variable_mods:
             custom_params["modifications:variable"] = variable_mods
@@ -687,6 +698,319 @@ class Workflow(WorkflowManager):
         except Exception:
             return value
 
+    def _normalise_modification_values(self, values: Any) -> list[str]:
+        """
+        Convert UI labels back to the OpenMS modification identifiers expected
+        by OpenNuXL.
+
+        Example:
+            "Oxidation (M) [+15.994915 Da]" -> "Oxidation (M)"
+        """
+        if values is None:
+            return []
+
+        if isinstance(values, str):
+            values = [values]
+
+        label_to_value = {}
+        for mod_key in ("modifications:fixed", "modifications:variable"):
+            label_to_value.update(
+                st.session_state.get(f"{mod_key}:modification_label_to_value", {})
+            )
+
+        normalized = []
+        for value in values:
+            value = str(value).strip()
+
+            if value in label_to_value:
+                mod_name = label_to_value[value]
+            else:
+                mod_name = self._strip_modification_mass_label(value)
+
+            if mod_name:
+                normalized.append(mod_name)
+
+        return normalized
+
+    def _strip_modification_mass_label(self, value: str) -> str:
+        """
+        Remove a UI-only delta-mass suffix from a modification label.
+        """
+        return re.sub(
+            r"\s+\[[+-]?\d+(?:\.\d+)?\s+Da\]$",
+            "",
+            value,
+        )
+
+    def _split_modification_site(self, mod_name: str) -> tuple[str, str | None]:
+        """
+        Split a modification option into the modification name and its site.
+
+        Example:
+            "Oxidation (M)" -> ("Oxidation", "M")
+            "Acetyl (Protein N-term)" -> ("Acetyl", "Protein N-term")
+        """
+        value = self._strip_modification_mass_label(mod_name.strip())
+        match = re.match(r"^(.*?)\s+\(([^()]*)\)$", value)
+        if not match:
+            return value, None
+        return match.group(1).strip(), match.group(2).strip()
+
+    def _as_pyopenms_string(self, value: Any) -> str:
+        """
+        Convert pyOpenMS String/bytes values into ordinary Python strings.
+        """
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return str(value)
+
+    def _openms_modification_mass_by_id(self) -> dict[str, float]:
+        """
+        Build an exact OpenMS modification identifier -> delta mass lookup.
+
+        The lookup is built by iterating over ModificationsDB entries. This is
+        intentionally different from querying every option through
+        ModifiedPeptideGenerator.getModifications(), because failed lookups emit
+        noisy C++ messages such as "Modification not found" for entries that
+        are present in the NuXL parameter file but are not valid peptide
+        modifications for a particular residue.
+        """
+        cache_key = "_nuxl_openms_modification_mass_by_id"
+        cached = st.session_state.get(cache_key)
+        if isinstance(cached, dict):
+            return cached
+
+        mass_by_id: dict[str, float] = {}
+
+        try:
+            import pyopenms as poms
+
+            db = poms.ModificationsDB()
+
+            for index in range(int(db.getNumberOfModifications())):
+                mod = db.getModification(index)
+                diff_mass = float(mod.getDiffMonoMass())
+
+                identifiers = [
+                    self._as_pyopenms_string(mod.getFullId()),
+                    self._as_pyopenms_string(mod.getId()),
+                ]
+
+                for identifier in identifiers:
+                    identifier = identifier.strip()
+                    if identifier:
+                        mass_by_id[identifier] = diff_mass
+
+        except Exception:
+            mass_by_id = {}
+
+        st.session_state[cache_key] = mass_by_id
+        return mass_by_id
+
+    def _manual_modification_mass_by_name(self) -> dict[str, float]:
+        """
+        Fallback delta masses for common modification names that can appear in
+        the NuXL INI restrictions but are not always available for every listed
+        residue specificity in OpenMS ModificationsDB.
+
+        These values are used only for UI display. The original INI value is
+        still passed unchanged to OpenNuXL during execution.
+        """
+        return {
+            "Acetyl": 42.010565,
+            "Amidated": -0.984016,
+            "Ammonia-loss": -17.026549,
+            "Carbamidomethyl": 57.021464,
+            "Carbamyl": 43.005814,
+            "Carboxymethyl": 58.005479,
+            "Deamidated": 0.984016,
+            "Dimethyl": 28.031300,
+            "Dioxidation": 31.989829,
+            "Formyl": 27.994915,
+            "Methyl": 14.015650,
+            "Oxidation": 15.994915,
+            "Phospho": 79.966331,
+            "Trimethyl": 42.046950,
+            "Water-loss": -18.010565,
+
+            # Isotope-labelled methyl variants observed in NuXL/OpenMS INI
+            # files. These are fallback UI masses for entries such as
+            # "Methyl:2H(2)13C (L)", including residue/site combinations that
+            # OpenMS does not validate as peptide modifications.
+            "Methyl:2H(2)13C": 18.039384,
+            "Methyl:13C2H(2)": 18.039384,
+            "Methyl:13C(1)2H(2)": 18.039384,
+            "Methyl:2H(3)13C(1)": 18.037835,
+            "Methyl:13C(1)2H(3)": 18.037835,
+            "Dimethyl:2H(4)13C(2)": 36.078768,
+            "Dimethyl:13C(2)2H(4)": 36.078768,
+        }
+
+    def _element_mass_by_symbol(self) -> dict[str, float]:
+        """
+        Monoisotopic masses used by the lightweight formula fallback parser.
+        """
+        return {
+            "H": 1.00782503223,
+            "2H": 2.01410177812,
+            "D": 2.01410177812,
+            "C": 12.0,
+            "13C": 13.00335483507,
+            "N": 14.00307400443,
+            "15N": 15.00010889888,
+            "O": 15.99491461957,
+            "18O": 17.99915961286,
+            "S": 31.9720711744,
+            "P": 30.97376199842,
+        }
+
+    def _formula_mass(self, formula: str) -> float | None:
+        """
+        Calculate a monoisotopic mass from simple empirical formula strings.
+
+        Supported examples:
+            "H(2)C"
+            "2H(2)13C"
+            "C2H3NO"
+        """
+        formula = formula.strip()
+        if not formula:
+            return None
+
+        mass_by_symbol = self._element_mass_by_symbol()
+        token_re = re.compile(r"(13C|15N|18O|2H|D|[A-Z][a-z]?)(?:\((-?\d+)\)|(-?\d+))?")
+
+        position = 0
+        total_mass = 0.0
+        found = False
+
+        for match in token_re.finditer(formula):
+            if match.start() != position:
+                return None
+
+            symbol = match.group(1)
+            count_text = match.group(2) or match.group(3)
+            count = int(count_text) if count_text else 1
+
+            element_mass = mass_by_symbol.get(symbol)
+            if element_mass is None:
+                return None
+
+            total_mass += element_mass * count
+            position = match.end()
+            found = True
+
+        if not found or position != len(formula):
+            return None
+
+        return total_mass
+
+    def _fallback_modification_delta_mass(self, mod_name: str) -> float | None:
+        """
+        Return a UI-only delta mass for modification names that are not found
+        as exact OpenMS entries.
+        """
+        clean_name = self._strip_modification_mass_label(mod_name.strip())
+        base_name, _site = self._split_modification_site(clean_name)
+
+        manual_masses = self._manual_modification_mass_by_name()
+        if base_name in manual_masses:
+            return manual_masses[base_name]
+
+        if clean_name.startswith("RBS-ID_"):
+            return {
+                "RBS-ID_Uridine": 244.0695,
+            }.get(base_name)
+
+        # If the modification name itself is an empirical formula, use it as a
+        # last-resort display mass.
+        return self._formula_mass(base_name)
+
+    def _modification_delta_mass(self, mod_name: str) -> float | None:
+        """
+        Return the monoisotopic delta mass used for fixed/variable modification
+        menu labels.
+
+        First, use the exact OpenMS identifier when available. If OpenMS does
+        not contain the exact residue/site combination, use a controlled
+        fallback table/formula parser for display only.
+        """
+        clean_name = self._strip_modification_mass_label(mod_name.strip())
+        if not clean_name:
+            return None
+
+        exact_mass = self._openms_modification_mass_by_id().get(clean_name)
+        if exact_mass is not None:
+            return exact_mass
+
+        base_name, _site = self._split_modification_site(clean_name)
+        base_mass = self._openms_modification_mass_by_id().get(base_name)
+        if base_mass is not None:
+            return base_mass
+
+        return self._fallback_modification_delta_mass(clean_name)
+
+    def _modification_menu_label(self, mod_name: str) -> str:
+        """
+        Build a display label for fixed/variable modification menus.
+
+        The original OpenMS/NuXL identifier is preserved as the selectable value
+        in execution; this method is only used to make the Streamlit menu less
+        ambiguous for users.
+        """
+        clean_name = self._strip_modification_mass_label(mod_name.strip())
+        if not clean_name:
+            return mod_name
+
+        delta_mass = self._modification_delta_mass(clean_name)
+        if delta_mass is None:
+            return clean_name
+
+        return f"{clean_name} [{delta_mass:+.2f} Da]"
+
+    def _is_custom_modification_name(self, mod_name: str) -> bool:
+        """
+        Return True for custom modification placeholders/names that should not
+        be shown in fixed/variable modification selection menus.
+        """
+        clean_name = self._strip_modification_mass_label(str(mod_name).strip())
+        if not clean_name:
+            return False
+
+        base_name, _site = self._split_modification_site(clean_name)
+        custom_patterns = (
+            "custom",
+            "user-defined",
+            "user_defined",
+            "unknown",
+        )
+
+        return any(
+            pattern in base_name.lower()
+            for pattern in custom_patterns
+        )
+
+    def _filter_visible_modification_options(self, options: list[str]) -> list[str]:
+        """
+        Remove custom modification names from the fixed/variable modification
+        menus while preserving all other INI-provided options.
+        """
+        return [
+            option
+            for option in options
+            if not self._is_custom_modification_name(option)
+        ]
+
+    def _modification_menu_labels(self, options: list[str]) -> dict[str, str]:
+        """
+        Return a mapping from OpenMS/NuXL modification identifiers to display
+        labels.
+        """
+        return {
+            option: self._modification_menu_label(option)
+            for option in self._filter_visible_modification_options(options)
+        }
+
     def _nuxl_select(self, config, key, config_key, label) -> None:
         entry = config[config_key]
         options = self._clean_options(entry["restrictions"])
@@ -748,6 +1072,40 @@ class Workflow(WorkflowManager):
     ) -> None:
         entry = config[config_key]
         options = self._clean_options(entry["restrictions"])
+
+        if config_key in {"fixed", "variable"}:
+            label_by_value = self._modification_menu_labels(options)
+            value_by_label = {
+                display_label: value
+                for value, display_label in label_by_value.items()
+            }
+
+            display_options = list(label_by_value.values())
+            display_default = [
+                label_by_value.get(
+                    self._strip_modification_mass_label(str(value)),
+                    str(value),
+                )
+                for value in default
+                if not self._is_custom_modification_name(str(value))
+            ]
+
+            self.ui.input_widget(
+                key=key,
+                default=display_default,
+                name=label,
+                help=(
+                    entry["description"]
+                    + " Displayed masses are monoisotopic delta masses in Da."
+                ),
+                widget_type="multiselect",
+                options=display_options,
+            )
+
+            # Make the label/value mapping available for execution-time
+            # normalization in case other UI code needs it later.
+            st.session_state[f"{key}:modification_label_to_value"] = value_by_label
+            return
 
         self.ui.input_widget(
             key=key,
