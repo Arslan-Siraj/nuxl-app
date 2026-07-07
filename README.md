@@ -1,4 +1,6 @@
-# NuXLApp: Interactive Data Analysis and Visualization for Protein–Nucleic Acid Crosslinking Mass Spectrometry [![Open Template!](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://openms-template.streamlit.app/)
+# NuXLApp: Interactive Data Analysis and Visualization for Protein–Nucleic Acid Crosslinking Mass Spectrometry [![Open Template!](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://nuxl.webapps.openms.de/)
+**NuXLApp:** [https://nuxl.webapps.openms.de](https://nuxl.webapps.openms.de/)
+
 
 <p align="center">
   <img src="assets/NuXL_image.png" alt="Protein-Nucleic-acid Cross-linking" width="900">
@@ -70,14 +72,14 @@ In the web app, collaborators can visualize files by sharing a unique workspace 
 
 ### 6. 📖 Documentation
 
-Documentation for **users** is included as pages in [this template app](https://abi-services.cs.uni-tuebingen.de/streamlit-template/) (todo link add), indicated by the 📖 icon. This is user guide for the analysis implement in NuXLApp.
+Documentation for **users** is included as pages in [NuXLApp](https://nuxl.webapps.openms.de/), indicated by the 📖 icon. This is user guide for the analysis implement in NuXLApp.
 
 ---
 
 ## Access NuXLApp
 ### 🔗 1. Try the Online Demo
 
-Explore the hosted version here:  👉 [Live App](https://abi-services.cs.uni-tuebingen.de/streamlit-template/)
+Explore the hosted version here:  👉 [Live App](https://nuxl.webapps.openms.de/)
 
 ### 💻 2. Running NuXL locally: Installation as stand-alone tool windows exec
 1. To get started, download and extract the [OpenMS-NuXLApp.zip](https://github.com/Arslan-Siraj/nuxl-app/releases/tag/0.8.0) file from latest release.
