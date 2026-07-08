@@ -163,7 +163,7 @@ RUN jq '.online_deployment = true' /app/settings.json > /app/tmp.json && mv /app
 
 RUN curl -L \
   -o /app/OpenMS-NuXLApp.zip \
-  https://github.com/Arslan-Siraj/nuxl-app/releases/download/0.7.0/OpenMS-NuXLApp.zip
+  https://github.com/Arslan-Siraj/nuxl-app/releases/download/0.9.0/OpenMS-NuXLApp.zip
 
 EXPOSE $PORT
 ENTRYPOINT ["/app/entrypoint.sh"]
