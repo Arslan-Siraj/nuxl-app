@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile
       args:
         GITHUB_TOKEN: $GITHUB_TOKEN
-    image: nuxl_app
-    container_name: nuxl_app
+    image: openms_nuxl_app
+    container_name: openms-nuxl-app
     restart: always
     ports:
       - 8501:8501
