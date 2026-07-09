@@ -1481,7 +1481,7 @@ class StreamlitUI:
         elif c1.button("Start Workflow", type="primary", use_container_width=True):
             start_workflow_function()
             with st.spinner("**Workflow starting...**"):
-                time.sleep(1)
+                time.sleep(10)
                 st.rerun()
 
         # Display logs and status
