@@ -53,14 +53,17 @@ with tabs[0]:
         # Same behavior as before:
         # - local: multiple files allowed
         # - online: one file allowed
+        is_local = st.session_state.location == "local"
+
         files = st.file_uploader(
             "Upload mzML/raw files",
-            accept_multiple_files=(st.session_state.location == "local"),
+            accept_multiple_files=is_local,
             type=["mzML", "raw"],
             help=(
                 "Input file. Valid formats: mzML or raw. "
                 "Multiple files are accepted in local mode."
             ),
+            key=f"mzml_raw_uploader_{'multiple' if is_local else 'single'}",
         )
 
         cols = st.columns(3)
@@ -73,7 +76,10 @@ with tabs[0]:
             if not files:
                 st.warning("Upload some files first.")
             else:
-                save_uploaded_mzML(files)
+                uploaded_files = (
+                    list(files) if isinstance(files, (list, tuple)) else [files]
+                )
+                save_uploaded_mzML(uploaded_files)
 
     # load example mzML files to current session state
     # load_example_mzML_files()
@@ -132,14 +138,17 @@ with tabs[1]:
         # Same behavior as before:
         # - local: multiple files allowed
         # - online: one file allowed
+        is_local = st.session_state.location == "local"
+
         files = st.file_uploader(
             "Upload fasta file",
-            accept_multiple_files=(st.session_state.location == "local"),
+            accept_multiple_files=is_local,
             type=["fasta"],
             help=(
                 "Input file. Valid format: fasta. "
                 "Multiple files are accepted in local mode."
             ),
+            key=f"fasta_uploader_{'multiple' if is_local else 'single'}",
         )
 
         cols = st.columns(3)
@@ -152,7 +161,10 @@ with tabs[1]:
             if not files:
                 st.warning("Upload some files first.")
             else:
-                save_uploaded_fasta(files)
+                uploaded_files = (
+                    list(files) if isinstance(files, (list, tuple)) else [files]
+                )
+                save_uploaded_fasta(uploaded_files)
 
     # load example fasta files to current session state
     # load_example_fasta_files()
