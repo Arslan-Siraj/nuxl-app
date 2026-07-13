@@ -1482,46 +1482,20 @@ class StreamlitUI:
 
     def _render_resizable_log(self, content: str) -> None:
         """
-        Display a live workflow log with a white background and green text.
-
-        The log is scrollable and can be resized vertically by dragging its
-        lower-right edge. Log content is escaped so it is always displayed as
-        plain text and cannot be interpreted as HTML or Markdown.
+        Display the workflow output as a simple scrollable text log.
         """
-        safe_content = html_lib.escape(content)
-
-        st.markdown(
-            f"""
-<div
-    style="
-        width: 100%;
-        height: 500px;
-        min-height: 220px;
-        max-height: 80vh;
-        resize: vertical;
-        overflow: auto;
-        box-sizing: border-box;
-        border: 1px solid #d0d5dd;
-        border-radius: 0.5rem;
-        padding: 0.9rem;
-        background-color: #ffffff;
-        color: #008f39;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
-                     Consolas, 'Liberation Mono', 'Courier New', monospace;
-        font-size: 0.86rem;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-    "
->{safe_content}</div>
-            """,
-            unsafe_allow_html=True,
-        )
+        with st.container(height=500):
+            st.code(
+                content,
+                language=None,
+                line_numbers=False,
+            )
 
     @st.fragment(run_every=2.0)
     def _render_live_log_fragment(
         self,
         log_path_string: str,
+        get_status_function=None,
     ) -> None:
         """
         Read and display the complete all.log file every two seconds.
@@ -1554,11 +1528,25 @@ class StreamlitUI:
                 log_path.stat().st_mtime
             ).strftime("%H:%M:%S")
             st.caption(
-                "Live workflow log · refreshes every 2 seconds · "
-                f"last log update: {modified_time}"
+                "Live workflow log · refreshes every 2 seconds",
+                help=(
+                    "Long-running workflows may take time to produce output. "
+                    f"If nothing appears yet, please wait. Last fetched: {modified_time}"
+                ),
             )
         except OSError:
             pass
+
+        status = get_status_function() if get_status_function else {}
+        is_running = status.get("running", False)
+
+        pid_exists = (
+            self.executor.pid_dir.exists()
+            and bool(list(self.executor.pid_dir.iterdir()))
+        )
+
+        if not is_running and not pid_exists:
+            st.rerun()
 
     def execution_section(
         self,
@@ -1622,6 +1610,7 @@ class StreamlitUI:
 
             self._render_live_log_fragment(
                 log_path_string=str(log_path),
+                get_status_function=get_status_function,
             )
 
         elif log_exists:
