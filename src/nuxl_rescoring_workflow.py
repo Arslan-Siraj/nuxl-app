@@ -1220,7 +1220,7 @@ class Workflow(WorkflowManager):
             handle.write("\n\n======= Full workflow log =======\n")
             handle.write(all_log_content)
 
-        self.logger.log(f"Wrote rescoring log with full workflow log: {log_file_path}")
+        self.logger.log(f"Wrote rescoring log: {log_file_path}")
         return log_file_path
 
     def _zip_rescoring_outputs(self, result_dir: Path) -> Path:
@@ -1273,8 +1273,8 @@ class Workflow(WorkflowManager):
             copied_files.append(global_zip_path)
 
         self.logger.log(
-            "Copied rescoring output file(s) directly to global result-files:\n"
-            + "\n".join(f"- {file}" for file in copied_files)
+            "Copied rescoring output file(s) directly to global result-files\n"
+            #+ "\n".join(f"- {file}" for file in copied_files)
         )
 
         return global_zip_path
@@ -1352,7 +1352,7 @@ class Workflow(WorkflowManager):
         }
 
         state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
-        self.logger.log(f"Wrote latest rescoring download state: {state_file}")
+        #self.logger.log(f"Wrote latest rescoring download state: {state_file}")
 
     def _latest_download_state_file(self) -> Path:
         return Path(
