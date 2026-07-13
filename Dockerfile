@@ -108,6 +108,29 @@ RUN python -m pip install --upgrade pip && \
     python -m pip install nuxl-rescore==0.2.0 && \
     python -c "import pkg_resources; import nuxl_rescore; print('imports ok')"
 
+# Pre-download and verify the MS2PIP XGBoost models.
+# This prevents incomplete runtime downloads and
+# "Model hash not recognized." warnings during the workflow.
+RUN mkdir -p /root/.ms2pip && \
+    curl -fL \
+        --retry 5 \
+        --retry-delay 3 \
+        --connect-timeout 20 \
+        --max-time 600 \
+        "https://zenodo.org/records/13270668/files/model_20210416_HCD2021_B.xgboost" \
+        -o /root/.ms2pip/model_20210416_HCD2021_B.xgboost && \
+    curl -fL \
+        --retry 5 \
+        --retry-delay 3 \
+        --connect-timeout 20 \
+        --max-time 600 \
+        "https://zenodo.org/records/13270668/files/model_20210416_HCD2021_Y.xgboost" \
+        -o /root/.ms2pip/model_20210416_HCD2021_Y.xgboost && \
+    echo "c086c599f618b199bbb36e2411701fb2866b24c8  /root/.ms2pip/model_20210416_HCD2021_B.xgboost" \
+        | sha1sum -c - && \
+    echo "22a5a137e29e69fa6d4320ed7d701b61cbdc4fcf  /root/.ms2pip/model_20210416_HCD2021_Y.xgboost" \
+        | sha1sum -c -
+
 SHELL ["/bin/bash", "-c"]
 
 WORKDIR /
