@@ -1,6 +1,4 @@
 import streamlit as st
-import html as html_lib
-import re
 import pyopenms as poms
 from pathlib import Path
 import shutil
@@ -48,44 +46,6 @@ def _filter_display_log_lines(lines: list[str]) -> list[str]:
         for line in lines
         if not any(pattern in line for pattern in SUPPRESSED_LOG_PATTERNS)
     ]
-
-
-_ANSI_ESCAPE_PATTERN = re.compile(
-    r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
-)
-
-
-def _clean_terminal_output(content: str) -> str:
-    """
-    Convert terminal-style output into readable static text for the browser.
-
-    Command-line progress bars commonly use carriage returns and backspaces to
-    overwrite one terminal line. These control characters are interpreted here
-    so they do not appear as duplicated lines or replacement-box characters.
-    """
-    content = _ANSI_ESCAPE_PATTERN.sub("", content)
-    content = content.replace("\ufffd", "")
-
-    completed_lines: list[str] = []
-    current_line: list[str] = []
-
-    for character in content:
-        if character == "\r":
-            current_line.clear()
-        elif character == "\b":
-            if current_line:
-                current_line.pop()
-        elif character == "\n":
-            completed_lines.append("".join(current_line).rstrip())
-            current_line.clear()
-        elif character == "\t" or ord(character) >= 32:
-            current_line.append(character)
-
-    if current_line:
-        completed_lines.append("".join(current_line).rstrip())
-
-    cleaned = "\n".join(completed_lines)
-    return re.sub(r"\n{4,}", "\n\n\n", cleaned)
 
 
 from src.common.common import (
@@ -1462,104 +1422,6 @@ class StreamlitUI:
                 st.toast("Parameters imported")
                 st.rerun()
 
-    def _read_display_log(
-        self,
-        log_path: Path,
-        log_lines_count,
-    ) -> str:
-        """Read and clean the selected workflow log for display."""
-        if not log_path.exists():
-            return ""
-
-        with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-            lines = f.readlines()
-
-        if log_lines_count != "all":
-            lines = lines[-int(st.session_state.log_lines_count):]
-
-        lines = _filter_display_log_lines(lines)
-        return _clean_terminal_output("".join(lines))
-
-    def _render_resizable_log(self, content: str) -> None:
-        """
-        Display a live workflow log with a white background and green text.
-
-        The log is scrollable and can be resized vertically by dragging its
-        lower-right edge. Log content is escaped so it is always displayed as
-        plain text and cannot be interpreted as HTML or Markdown.
-        """
-        safe_content = html_lib.escape(content)
-
-        st.markdown(
-            f"""
-<div
-    style="
-        width: 100%;
-        height: 500px;
-        min-height: 220px;
-        max-height: 80vh;
-        resize: vertical;
-        overflow: auto;
-        box-sizing: border-box;
-        border: 1px solid #d0d5dd;
-        border-radius: 0.5rem;
-        padding: 0.9rem;
-        background-color: #ffffff;
-        color: #008f39;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
-                     Consolas, 'Liberation Mono', 'Courier New', monospace;
-        font-size: 0.86rem;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-    "
->{safe_content}</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    @st.fragment(run_every=2.0)
-    def _render_live_log_fragment(
-        self,
-        log_path_string: str,
-    ) -> None:
-        """
-        Read and display the complete all.log file every two seconds.
-
-        Only this fragment reruns. The remainder of the Run page stays static.
-        """
-        log_path = Path(log_path_string)
-
-        if not log_path.exists():
-            st.info("Waiting for workflow log output...")
-            return
-
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-                lines = f.readlines()
-        except OSError as error:
-            st.warning(f"Unable to read workflow log: {error}")
-            return
-
-        display_lines = _filter_display_log_lines(lines)
-        display_content = _clean_terminal_output("".join(display_lines))
-
-        if display_content:
-            self._render_resizable_log(display_content)
-        else:
-            st.info("Waiting for workflow log output...")
-
-        try:
-            modified_time = datetime.fromtimestamp(
-                log_path.stat().st_mtime
-            ).strftime("%H:%M:%S")
-            st.caption(
-                "Live workflow log · refreshes every 2 seconds · "
-                f"last log update: {modified_time}"
-            )
-        except OSError:
-            pass
-
     def execution_section(
         self,
         start_workflow_function,
@@ -1569,12 +1431,22 @@ class StreamlitUI:
         with st.expander("**Summary**"):
             st.markdown(self.export_parameters_markdown())
 
-        c1, _ = st.columns(2)
+        c1, c2 = st.columns(2)
+        # Select log level, this can be changed at run time or later without re-running the workflow
+        log_level = c1.selectbox(
+            "log details", ["minimal", "commands and run times", "all"], key="log_level"
+        )
 
-        # Always display the complete workflow log.
-        # No log-level or line-count choices are shown to the user.
-        log_level = "all"
-        log_lines_count = "all"
+        # Real-time display options
+        if "log_lines_count" not in st.session_state:
+            st.session_state.log_lines_count = 100
+
+        log_lines_count = c2.selectbox(
+            "lines to show", [50, 100, 200, 500, "all"],
+            index=1, key="log_lines_select"
+        )
+        if log_lines_count != "all":
+            st.session_state.log_lines_count = log_lines_count
 
         # Get workflow status (supports both queue and local modes)
         status = {}
@@ -1591,7 +1463,7 @@ class StreamlitUI:
             is_running = True
             job_status = "running"
 
-        log_path = Path(self.workflow_dir, "logs", "all.log")
+        log_path = Path(self.workflow_dir, "logs", log_level.replace(" ", "-") + ".log")
         log_exists = log_path.exists()
 
         # Show queue status if available (online mode)
@@ -1614,15 +1486,31 @@ class StreamlitUI:
 
         # Display logs and status
         if is_running:
+            # Real-time display during execution
+            spinner_text = "**Workflow running...**"
             if job_status == "queued":
                 pos = status.get("queue_position", "?")
-                st.info(f"**Waiting in queue (position {pos})...**")
-            else:
-                st.info("**Workflow running...**")
+                spinner_text = f"**Waiting in queue (position {pos})...**"
 
-            self._render_live_log_fragment(
-                log_path_string=str(log_path),
-            )
+            with st.spinner(spinner_text):
+                if log_exists:
+                    with open(log_path, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                    if log_lines_count == "all":
+                        display_lines = lines
+                    else:
+                        display_lines = lines[-st.session_state.log_lines_count:]
+
+                    display_lines = _filter_display_log_lines(display_lines)
+
+                    st.code(
+                        "".join(display_lines),
+                        language="neon",
+                        line_numbers=False,
+                    )
+                # Faster polling for real-time updates
+                time.sleep(1)
+                st.rerun()
 
         elif log_exists:
             # Static display after completion
@@ -1639,9 +1527,15 @@ class StreamlitUI:
                 st.warning("**Workflow was cancelled.**")
             else:
                 st.error("**Errors occurred, check log file.**")
-            display_lines = _filter_display_log_lines(lines)
-            display_content = _clean_terminal_output("".join(display_lines))
-            self._render_resizable_log(display_content)
+            # Apply line limit to static display
+            if log_lines_count == "all":
+                display_lines = lines
+            else:
+                display_lines = lines[-st.session_state.log_lines_count:]
+
+            display_lines = _filter_display_log_lines(display_lines)
+
+            st.code("".join(display_lines), language="neon", line_numbers=False)
 
     def _show_queue_status(self, status: dict) -> None:
         """Display queue job status for online mode"""

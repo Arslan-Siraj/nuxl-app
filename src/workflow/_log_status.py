@@ -10,7 +10,7 @@ from typing import Literal
 LogOutcome = Literal["finished", "cancelled", "error"]
 
 CANCELLED_MARKER = "WORKFLOW CANCELLED"
-FINISHED_MARKER = "WORKFLOW FINISHED"
+FINISHED_MARKER = "WORKFLOW FINISHED!! Please wait for remaining processes to complete after workflow run."
 
 
 def classify_log_outcome(content: str) -> LogOutcome:
