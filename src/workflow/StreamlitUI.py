@@ -1531,7 +1531,7 @@ class StreamlitUI:
                 "Live workflow log · refreshes every 2 seconds",
                 help=(
                     "Long-running workflows may take time to produce output. "
-                    f"If nothing appears yet, please wait. Last fetched: {modified_time}"
+                    f"If nothing updated, please wait. Last fetched: {modified_time}"
                 ),
             )
         except OSError:
