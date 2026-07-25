@@ -19,6 +19,9 @@ st.markdown(
       Here, we take the NuXL search engine in a simple and easy graphical user interface. NuXL is a dedicated software package designed for the analysis of XL-MS (cross-linking mass spectrometry) data obtained from UV and chemically crosslinked protein–RNA/DNA samples. 
       This powerful tool allows for reliable, FDR-controlled assignment of protein–nucleic acid crosslinking sites in samples treated with UV light or chemical crosslinkers. It offers rescoring and user-friendly matched spectra visualization, including ion annotations.
 
+      Rescoring refers to the post-processing of initial identification results to improve discrimination between correct and incorrect matches by incorporating additional evidence, such as predicted retention time or fragment ion intensities. Such approaches have been shown to increase the identification rate.
+
+      With NuXL App users can analyze data with NuXL search engine, run rescoring pipeline, generate DIA library, and result interpretation with cross-link aware visualization.
       """
 )
 
@@ -30,6 +33,10 @@ st.markdown("""
   - **NuXL rescore:**
       Siraj, A., Bouwmeester, R., Declercq, A., Welp, L., Chernev, A., Wulf, A., ... & Sachsenberg, T. (2024). Intensity and retention time prediction improves the rescoring of protein‐nucleic acid cross‐links. Proteomics, 24(8), 2300144.
       [https://doi.org/10.1002/pmic.202300144](https://doi.org/10.1002/pmic.202300144) 
+  - **OpenMS WebApp Framework:**
+      Müller, T. D., Siraj, A., et al. OpenMS WebApps: Building User-Friendly Solutions for MS Analysis. Journal of Proteome Research (2025). 
+      [https://doi.org/10.1021/acs.jproteome.4c00872](https://doi.org/10.1021/acs.jproteome.4c00872)
+
 """)
 
 #In docker, OpenMS-App (executable) can be downloadable from github
