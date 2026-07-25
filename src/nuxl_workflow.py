@@ -1315,6 +1315,8 @@ class Workflow(WorkflowManager):
                 use_container_width=True,
             )
 
+        st.caption("NuXL search engine output files were copied to the global result-files, could be found on **Results** page. ")
+
     def _copy_results_to_global_result_files(self, workflow_result_dir: Path) -> None:
         """
         Copy all generated NuXL files to the global NuXLApp result folder:
