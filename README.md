@@ -82,7 +82,7 @@ Documentation for **users** is included as pages in [NuXLApp](https://nuxl.webap
 Explore the hosted version here:  👉 [Live App](https://nuxl.webapps.openms.de/)
 
 ### 💻 2. Running NuXL locally: Installation as stand-alone tool windows exec
-1. To get started, download and extract the [OpenMS-NuXLApp.zip](https://github.com/Arslan-Siraj/nuxl-app/releases/tag/0.8.0) file from latest release.
+1. To get started, download and extract the [OpenMS-NuXLApp.zip](https://github.com/Arslan-Siraj/nuxl-app/releases/) file from latest release.
 2. After installation of `OpenMS-NuXLApp.msi`, The app can then be launched using the corresponding desktop icon.
 3. Use app in your default browser. <br/> 
 

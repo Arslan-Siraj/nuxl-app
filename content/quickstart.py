@@ -106,5 +106,4 @@ st.markdown("""
       For any inquiries or assistance, please feel free to reach out to us.  
 
       [![Discord Shield](https://img.shields.io/discord/832282841836159006?style=flat-square&message=Discord&color=5865F2&logo=Discord&logoColor=FFFFFF&label=Discord)](https://discord.gg/4TAGhqJ7s5)  [![Gitter](https://img.shields.io/static/v1?style=flat-square&message=on%20Gitter&color=ED1965&logo=Gitter&logoColor=FFFFFF&label=Chat)](https://gitter.im/OpenMS/OpenMS?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)  [![GitHub Issues](https://img.shields.io/badge/Open-GitHub%20Issue-%23121011?style=flat-square&logo=github)](https://github.com/Arslan-Siraj/nuxl-app/issues)
-
 """)
