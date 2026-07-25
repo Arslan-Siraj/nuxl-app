@@ -7,9 +7,8 @@ page_setup(page="main")
 
 st.markdown(
         """
-        # OpenMS NuXL App
-        ### NuXL: A specialized protein nucleic-acid crosslink search engine
-        Welcome to the OpenMS NuXL App, a web application for the NuXL protein-nucleic acid search engine built using [OpenMS](https://openms.de/) and [pyOpenMS](https://pyopenms.readthedocs.io/en/latest/).
+        # OpenMS NuXLApp
+        Welcome to the OpenMS NuXLApp, a web application for the interactive data analysis and visualization for protein–nucleic acid crosslinking mass spectrometry.
 
         """
     )
