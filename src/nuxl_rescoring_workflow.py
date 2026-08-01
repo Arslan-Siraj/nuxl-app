@@ -30,6 +30,9 @@ PROTOCOL_RT_MODEL_DESCRIPTIONS = {
     "RNA_Other": "generic RT model fine-tuned across RNA All protocol modifications",
 }
 
+AUTO_MGF_OPTION = "Automatic: matching MGF or convert matching mzML"
+
+
 EXCLUDED_IDXML_MARKERS = [
     "0.0100",
     "0.1000",
@@ -51,7 +54,10 @@ class Workflow(WorkflowManager):
     - Valid initial NuXL idXML files are synced from <workspace>/result-files.
     - The synced idXML list excludes _perc_, 0.0100, 0.1000, 1.0000,
       RT_feat, RT_Int_feat, updated_feat, and _sse_perc_ files.
-    - MGF files are uploaded to <workspace>/mzML-files, synced into this workflow, and selected by the user.
+    - Manually uploaded MGF files remain supported.
+    - When max-correlation features are enabled and no manual MGF is selected,
+      the workflow uses <idXML stem>.mgf from <workspace>/mzML-files or converts
+      <idXML stem>.mzML to MGF with OpenMS FileConverter.
     - Rescoring outputs are copied directly to <workspace>/result-files.
     - After successful execution, a ZIP download button appears at the bottom
       of the execution page.
@@ -69,7 +75,9 @@ class Workflow(WorkflowManager):
         if st.button("Sync files from workspace", type="primary"):
             self._sync_global_idxml_files()
             self._sync_global_mgf_files()
-            st.success("Valid initial idXML files and MGF files synced into workflow input folders.")
+            st.success(
+                "Valid initial idXML files and existing MGF files synced into workflow input folders."
+            )
             st.rerun()
 
         self._upload_initial_idxml_files()
@@ -85,21 +93,33 @@ class Workflow(WorkflowManager):
         )
 
         st.divider()
-        st.markdown("##### MGF files for max-correlation features")
+        st.markdown("##### MS files for max-correlation features")
         st.caption(
-            "Uploading `.mgf` here uploads the file "
-            "to workspace and also makes it available in this workflow. "
-            "Select the required `.mgf` file manually in the Configure tab."
+            "Manual `.mgf` upload remains available. When automatic mode is used, "
+            "the workflow looks for an MGF with the same stem as the selected idXML. "
+            "If it is absent, the matching `.mzML` in the workspace `mzML-files` "
+            "folder is converted with OpenMS FileConverter."
         )
         self._upload_mgf_files()
         self._show_available_files(
             key="ms-files",
             title="MGF files",
             allowed_suffixes={".mgf"},
-            help_text=(
-                "Available MGF files in workspace. "
-            ),
+            help_text="Available manual or previously generated MGF files.",
         )
+
+        matching_mzml_files = self._all_global_ms_files({".mzml"})
+        st.markdown("##### mzML files available for automatic conversion")
+        if matching_mzml_files:
+            st.dataframe(
+                pd.DataFrame({"file": [path.name for path in matching_mzml_files]}),
+                use_container_width=True,
+            )
+        else:
+            st.warning(
+                "No mzML files are currently available in the workspace "
+                "`mzML-files` folder."
+            )
 
     def _upload_initial_idxml_files(self) -> None:
         workspace_dir = Path(self.workflow_dir).parent
@@ -396,25 +416,26 @@ class Workflow(WorkflowManager):
             )
 
         mgf_files = self._all_uploaded_ms_files()
-        if mgf_files:
-            mgf_options = ["None"] + [str(p) for p in mgf_files]
-            self.ui.input_widget(
-                key="mgf-file",
-                default=mgf_options[1],
-                name="Choose MGF file for max-correlation features",
-                widget_type="selectbox",
-                options=mgf_options,
-                display_file_path=False,
-                help=(
-                    "Used only when Max correlation features are enabled. "
-                    "Select the MGF file manually."
-                ),
-            )
-        else:
+        mgf_options = [AUTO_MGF_OPTION] + [str(p) for p in mgf_files]
+        self.ui.input_widget(
+            key="mgf-file",
+            default=AUTO_MGF_OPTION,
+            name="MGF source for max-correlation features",
+            widget_type="selectbox",
+            options=mgf_options,
+            display_file_path=False,
+            help=(
+                "Automatic mode first searches for an MGF whose stem matches the "
+                "selected idXML. If absent, it converts the matching mzML from the "
+                "workspace mzML-files folder using OpenMS FileConverter. A manually "
+                "uploaded MGF can still be selected explicitly."
+            ),
+        )
+
+        if not mgf_files:
             st.info(
-                "Optional/required: upload an MGF file on the Upload page or "
-                "place it in global mzML-files, then sync, if Max correlation "
-                "features are enabled."
+                "Automatic mode will find the `.mzML` file with the same filename as "
+                "the selected `.idXML` file and convert it to MGF."
             )
 
         #st.markdown("### Rescoring parameters")
@@ -563,7 +584,7 @@ class Workflow(WorkflowManager):
     def execution(self) -> bool:
         self.params = self.parameter_manager.get_parameters_from_json()
 
-        # Refresh valid initial idXML files and global MGF files when the job starts.
+        # Refresh valid initial idXML files and existing global MGF files when the job starts.
         self._sync_global_idxml_files()
         self._sync_global_mgf_files()
 
@@ -626,14 +647,16 @@ class Workflow(WorkflowManager):
             calibration_data=calibration_data,
         )
 
+        resolved_mgf_path: Path | None = None
         if max_correlation_features:
-            mgf_path = self._ensure_mgf_for_idxml(idxml_file)
-            if mgf_path is None:
+            resolved_mgf_path = self._ensure_mgf_for_idxml(idxml_file)
+            if resolved_mgf_path is None:
                 self.logger.log(
-                    "ERROR: Max-correlation features require an MGF file selected in Configure."
+                    "ERROR: Max-correlation features require either a manually selected "
+                    "MGF or a matching mzML/MGF file in the workspace mzML-files folder."
                 )
                 return False
-            args.extend(["-mgf", str(mgf_path)])
+            args.extend(["-mgf", str(resolved_mgf_path)])
 
         args.extend(["-perc_exe", self._percolator_path()])
         args.extend(["-perc_adapter", self._percolator_adapter_path()])
@@ -670,6 +693,7 @@ class Workflow(WorkflowManager):
             resources=resources,
             args=args,
             success=success,
+            resolved_mgf_file=resolved_mgf_path,
         )
 
         if not success:
@@ -1049,31 +1073,214 @@ class Workflow(WorkflowManager):
         return args, expected_100_xls, expected_1_xls
 
     def _ensure_mgf_for_idxml(self, idxml_file: str) -> Path | None:
-        selected_mgf = self.params.get("mgf-file")
+        """
+        Resolve the MGF used for intensity/max-correlation features.
 
-        if selected_mgf and selected_mgf != "None":
+        Priority:
+        1. An explicitly selected manual MGF.
+        2. <idXML stem>.mgf in workflow input or global mzML-files.
+        3. Convert <idXML stem>.mzML from global mzML-files with FileConverter.
+        """
+        selected_mgf = self.params.get("mgf-file")
+        automatic_values = {None, "", "None", AUTO_MGF_OPTION}
+
+        if selected_mgf not in automatic_values:
             selected_path = Path(str(selected_mgf))
 
             if selected_path.exists() and selected_path.suffix.lower() == ".mgf":
+                self.logger.log(f"Using manually selected MGF file: {selected_path}")
                 return selected_path
 
             # Fallback if ParameterManager stored only the displayed file name.
             for path in self._all_uploaded_ms_files():
                 if path.name == str(selected_mgf):
+                    self.logger.log(f"Using manually selected MGF file: {path}")
                     return path
 
-            self.logger.log(f"ERROR: Selected MGF file does not exist: {selected_mgf}")
+            self.logger.log(
+                f"WARNING: Selected MGF file was not found: {selected_mgf}. "
+                "Falling back to automatic name matching."
+            )
+
+        id_stem = Path(idxml_file).stem
+
+        matching_mgf = self._find_matching_ms_file(
+            stem=id_stem,
+            suffix=".mgf",
+            include_workflow_input=True,
+        )
+        if matching_mgf is not None:
+            self.logger.log(f"Using matching MGF file: {matching_mgf}")
+            return matching_mgf
+
+        matching_mzml = self._find_matching_ms_file(
+            stem=id_stem,
+            suffix=".mzml",
+            include_workflow_input=False,
+        )
+        if matching_mzml is None:
+            self.logger.log(
+                "ERROR: No matching MGF or mzML file was found for the selected idXML. "
+                f"Expected `{id_stem}.mgf` or `{id_stem}.mzML` in the workspace "
+                "`mzML-files` folder."
+            )
             return None
 
-        if not self._all_uploaded_ms_files():
-            self.logger.log("ERROR: No MGF files are available.")
+        return self._convert_matching_mzml_to_mgf(matching_mzml, id_stem)
+
+    def _find_matching_ms_file(
+        self,
+        stem: str,
+        suffix: str,
+        include_workflow_input: bool,
+    ) -> Path | None:
+        suffix = suffix.lower()
+        candidates: list[Path] = []
+
+        if include_workflow_input:
+            candidates.extend(self._all_uploaded_ms_files())
+
+        candidates.extend(self._all_global_ms_files({suffix}))
+
+        for candidate in candidates:
+            if (
+                candidate.exists()
+                and candidate.is_file()
+                and candidate.suffix.lower() == suffix
+                and candidate.stem.casefold() == stem.casefold()
+            ):
+                return candidate
+
+        return None
+
+    def _all_global_ms_files(self, allowed_suffixes: set[str]) -> list[Path]:
+        global_ms_dir = Path(self.workflow_dir).parent / "mzML-files"
+        allowed = {suffix.lower() for suffix in allowed_suffixes}
+        files: list[Path] = []
+
+        if not global_ms_dir.exists():
+            return files
+
+        files.extend(
+            path
+            for path in sorted(global_ms_dir.iterdir())
+            if path.is_file()
+            and path.name != "external_files.txt"
+            and path.suffix.lower() in allowed
+        )
+
+        external_file = global_ms_dir / "external_files.txt"
+        if external_file.exists():
+            for line in external_file.read_text(
+                encoding="utf-8",
+                errors="replace",
+            ).splitlines():
+                path = Path(line.strip())
+                if (
+                    path.exists()
+                    and path.is_file()
+                    and path.suffix.lower() in allowed
+                ):
+                    files.append(path)
+
+        return files
+
+    def _file_converter_path(self) -> str | None:
+        executable_names = (
+            ["FileConverter.exe", "FileConverter"]
+            if os.name == "nt"
+            else ["FileConverter", "FileConverter.exe"]
+        )
+
+        candidate_dirs = [
+            Path.cwd(),
+            Path.cwd() / "bin",
+            Path(sys.executable).resolve().parent,
+            Path(sys.executable).resolve().parent / "bin",
+        ]
+
+        try:
+            settings = st.session_state.get("settings", {})
+            for setting_key in ("openms-path", "openms_path", "openms-bin", "openms_bin"):
+                configured_path = settings.get(setting_key)
+                if configured_path:
+                    configured = Path(str(configured_path))
+                    candidate_dirs.append(
+                        configured if configured.is_dir() else configured.parent
+                    )
+        except Exception:
+            pass
+
+        for directory in candidate_dirs:
+            for executable_name in executable_names:
+                candidate = directory / executable_name
+                if candidate.exists() and candidate.is_file():
+                    return str(candidate)
+
+        for executable_name in executable_names:
+            resolved = shutil.which(executable_name)
+            if resolved:
+                return resolved
+
+        return None
+
+    def _convert_matching_mzml_to_mgf(
+        self,
+        mzml_path: Path,
+        id_stem: str,
+    ) -> Path | None:
+        file_converter = self._file_converter_path()
+        if file_converter is None:
+            self.logger.log(
+                "ERROR: OpenMS FileConverter could not be located. Ensure that "
+                "FileConverter is installed and available in PATH or the OpenMS bin folder."
+            )
             return None
+
+        global_ms_dir = Path(self.workflow_dir).parent / "mzML-files"
+        workflow_ms_dir = Path(self.workflow_dir, "input-files", "ms-files")
+        global_ms_dir.mkdir(parents=True, exist_ok=True)
+        workflow_ms_dir.mkdir(parents=True, exist_ok=True)
+
+        output_mgf = global_ms_dir / f"{id_stem}.mgf"
+        temporary_mgf = global_ms_dir / f"{id_stem}.tmp.mgf"
+        temporary_mgf.unlink(missing_ok=True)
 
         self.logger.log(
-            "ERROR: Please select an MGF file in Configure when "
-            "Max-correlation features are enabled."
+            f"No matching MGF found. Converting mzML with FileConverter: "
+            f"{mzml_path} -> {output_mgf}"
         )
-        return None
+
+        conversion_args = [
+            file_converter,
+            "-in",
+            str(mzml_path),
+            "-out",
+            str(temporary_mgf),
+            "-out_type",
+            "mgf",
+        ]
+
+        conversion_success = self.executor.run_command(conversion_args)
+        if (
+            not conversion_success
+            or not temporary_mgf.exists()
+            or temporary_mgf.stat().st_size == 0
+        ):
+            temporary_mgf.unlink(missing_ok=True)
+            self.logger.log(
+                "ERROR: FileConverter failed to create a valid MGF file from "
+                f"{mzml_path}."
+            )
+            return None
+
+        temporary_mgf.replace(output_mgf)
+
+        workflow_mgf = workflow_ms_dir / output_mgf.name
+        shutil.copy2(output_mgf, workflow_mgf)
+
+        self.logger.log(f"Created matching MGF file: {output_mgf}")
+        return output_mgf
 
     def _find_reference_idxml(
         self,
@@ -1176,6 +1383,7 @@ class Workflow(WorkflowManager):
         resources: dict[str, Path],
         args: list[str],
         success: bool,
+        resolved_mgf_file: Path | None = None,
     ) -> Path:
         time_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         id_file = Path(idxml_file)
@@ -1194,7 +1402,8 @@ class Workflow(WorkflowManager):
             ======= Parameters ==========
             NuXLApp version: {app_version}
             Selected idXML File: {idxml_file}
-            Selected MGF File: {self.params.get('mgf-file', 'None')}
+            Configured MGF Source: {self.params.get('mgf-file', AUTO_MGF_OPTION)}
+            Resolved MGF File: {resolved_mgf_file if resolved_mgf_file else 'None'}
             Protocol: {protocol}
             Retention time features: {retention_time_features}
             Max correlation features: {max_correlation_features}
