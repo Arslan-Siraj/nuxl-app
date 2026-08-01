@@ -12,11 +12,13 @@ The **NuXL Rescoring Workflow** improves NuXL cross-link identifications by usin
 
 ![Files-Tab Rescoring](images/rescoring_simple_file.png)
 
-📁 User need **initial NuXL idXML file**. This should be the original NuXL search result before Percolator/FDR filtering.
+### 📁 Rescoring input files
 
-> ⚠️ **Warning:** Do **not** use already filtered or rescored files, such as files containing filtering pattern of NuXL out.
+To perform rescoring, an **initial NuXL `.idXML` file** is required. This file must be the original output of the NuXL search **before Percolator/FDR filtering or rescoring**.
 
-Examples of files that should not be used as rescoring input:
+> ⚠️ **Warning:** Do **not** use already filtered or rescored `.idXML` files. Files containing NuXL FDR-filtering patterns or the `RDDF_` prefix are not valid as initial rescoring input.
+
+Examples of files that should **not** be used:
 
 ```text
 sample_perc_0.0100_XLs.idXML
@@ -24,17 +26,42 @@ sample_perc_1.0000_XLs.idXML
 RDDF_sample_perc_0.0100_XLs.idXML
 ```
 
-You can either upload an initial NuXL `.idXML` file directly or sync already available files from the workspace (if you already analyze the sample with NuXL search engine in same workspace. After upload or sync, the available idXML files are shown in the file table.
+You can either **upload an initial NuXL `.idXML` file manually** or click **Sync files from workspace** to use files already generated in the current workspace. If the sample was previously analyzed with the NuXL search engine in the same workspace, synchronization is usually sufficient.
 
-> ℹ️ **Info:** If the NuXL search was already performed in the same workspace, syncing files from the workspace is usually enough.
+After uploading or synchronizing, all valid initial `.idXML` files are shown in the **idXML files** table.
 
-If your file is rejected, check that it is the original NuXL idXML output and not a Percolator/FDR or RDDF file (please check the above constraints).
+> ℹ️ **Info:** NuXLApp automatically excludes filtered and rescored `.idXML` files from the available rescoring inputs. If an uploaded file is rejected, verify that it is the original NuXL search output and not a Percolator/FDR-filtered or RDDF rescoring result.
 
-#### Optional input (MGF file)
+#### 📄 MGF and mzML files for max-correlation features
 
-📄 An **MGF file** (`.mgf`) is needed when **Max correlation features** are enabled. If you use only retention-time features, an MGF file is not required. you could upload the mgf file and view the MGF files on the page, which should be available for selection in configure step.
+An **MGF file (`.mgf`)** is required when **Max correlation features** are enabled. If rescoring is performed using only retention-time features, an MGF file is not required.
 
-> ⚠️ **Warning:** If **Max correlation features** are enabled, a matching MGF file should be selected in the Configure step.
+NuXLApp provides two ways to supply the MGF file:
+
+1. **Automatic conversion from mzML**
+
+   If no MGF file is selected manually, NuXLApp finds the `.mzML` file with the **same filename as the selected `.idXML` file** and converts it to MGF using OpenMS `FileConverter`.
+
+   For example:
+
+   ```text
+   sample.idXML
+   sample.mzML
+   ```
+
+   The corresponding MGF file is generated as:
+
+   ```text
+   sample.mgf
+   ```
+
+   Available `.mzML` files that can be used for automatic conversion are displayed under **mzML files available for automatic conversion**.
+
+2. **Manual MGF upload**
+
+   An existing `.mgf` file can be uploaded directly. Uploaded or previously generated MGF files are displayed in the **MGF files** table and can be selected manually in the **Configure** step.
+
+> ℹ️ **Info:** Automatic mode will find the `.mzML` file with the same filename as the selected `.idXML` file and convert it to MGF.
 
 ---
 
