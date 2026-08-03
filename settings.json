@@ -1,7 +1,7 @@
 {
     "app-name": "NuXLApp",
     "github-user": "OpenMS",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "repository-name": "nuxl-app",
     "openms-version": "develop-branch-41ce6cf/Tag:NuXLApp",
     "legal_links": {
