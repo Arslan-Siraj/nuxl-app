@@ -32,7 +32,7 @@ def _get_process_limit() -> int:
 
     Default = 1, which is safest for hosted Docker deployments.
     """
-    value = os.environ.get("NUXL_RESCORE_MAX_PROCESSES", "4")
+    value = os.environ.get("NUXL_RESCORE_MAX_PROCESSES", "2")
 
     try:
         value = int(value)
