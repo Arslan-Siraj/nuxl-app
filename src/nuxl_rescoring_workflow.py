@@ -661,15 +661,31 @@ class Workflow(WorkflowManager):
         args.extend(["-perc_exe", self._percolator_path()])
         args.extend(["-perc_adapter", self._percolator_adapter_path()])
 
-        # Limit TensorFlow/NumPy thread fan-out. On Windows, DeepLC/TensorFlow
-        # can otherwise spawn many heavy worker processes and exhaust the paging file.
-        os.environ.setdefault("OMP_NUM_THREADS", "1")
-        os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
-        os.environ.setdefault("MKL_NUM_THREADS", "1")
-        os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
-        os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
-        os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
-        os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+        # Resource limits for NuXL rescoring.
+        #
+        # NUXL_RESCORE_MAX_PROCESSES controls Python multiprocessing used by
+        # DeepLC and MS2PIP through the NuXLApp wrapper.
+        #
+        # Start with 1 for the public hosted deployment. It can later be raised
+        # to 2 or 4 if memory measurements show sufficient headroom.
+        os.environ.setdefault(
+            "NUXL_RESCORE_MAX_PROCESSES",
+            "1",
+        )
+
+        # These must use direct assignment rather than setdefault because the
+        # Docker/base environment may already define higher values.
+        os.environ["OMP_NUM_THREADS"] = "1"
+        os.environ["OMP_THREAD_LIMIT"] = "1"
+        os.environ["OPENBLAS_NUM_THREADS"] = "1"
+        os.environ["MKL_NUM_THREADS"] = "1"
+        os.environ["BLIS_NUM_THREADS"] = "1"
+        os.environ["NUMEXPR_NUM_THREADS"] = "1"
+        os.environ["NUMEXPR_MAX_THREADS"] = "1"
+        os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
+        os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+        os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+        os.environ["MALLOC_ARENA_MAX"] = "2"
 
         self.logger.log(f"Rescoring idXML file: {idxml_file}")
         #self.logger.log(f"Protocol: {protocol}")
@@ -931,6 +947,23 @@ class Workflow(WorkflowManager):
         return model_path, calibration_data
 
     def _nuxl_rescore_command_prefix(self) -> list[str]:
+        """
+        Run nuxl_rescore through the NuXLApp resource-limited wrapper.
+
+        The wrapper leaves the installed nuxl_rescore package unchanged but limits
+        DeepLC/MS2PIP multiprocessing to prevent container OOM kills.
+        """
+
+        runner = Path(__file__).with_name(
+            "nuxl_rescore_limited_runner.py"
+        )
+
+        if not runner.exists():
+            raise FileNotFoundError(
+                f"NuXL-rescore runner not found: {runner}"
+            )
+
+        # Windows executable distribution
         if os.name == "nt":
             python_candidates = [
                 Path.cwd() / "python-3.10.0" / "python.exe",
@@ -940,14 +973,24 @@ class Workflow(WorkflowManager):
 
             for python_exe in python_candidates:
                 if python_exe.exists():
-                    return [str(python_exe), "-m", "nuxl_rescore", "run"]
+                    return [
+                        str(python_exe),
+                        str(runner),
+                        "run",
+                    ]
 
-            return ["python", "-m", "nuxl_rescore", "run"]
+            return [
+                "python",
+                str(runner),
+                "run",
+            ]
 
-        if shutil.which("nuxl_rescore"):
-            return ["nuxl_rescore", "run"]
-
-        return [sys.executable, "-m", "nuxl_rescore", "run"]
+        # Docker / Linux / Apptainer
+        return [
+            sys.executable,
+            str(runner),
+            "run",
+        ]
 
     def _percolator_path(self) -> str:
         candidates = []
