@@ -1538,15 +1538,59 @@ class StreamlitUI:
             pass
 
         status = get_status_function() if get_status_function else {}
+
         is_running = status.get("running", False)
+        job_status = status.get("status", "unknown")
 
         pid_exists = (
             self.executor.pid_dir.exists()
             and bool(list(self.executor.pid_dir.iterdir()))
         )
 
+        # Do not trigger a full-app rerun from this auto-refreshing fragment.
+        #
+        # The fragment already reruns automatically every 2 seconds. A temporary
+        # RQ/Redis status-read failure should therefore simply be retried on the
+        # next fragment refresh instead of rerunning the complete multipage app.
         if not is_running and not pid_exists:
-            st.rerun()
+
+            raw_log = "".join(lines)
+
+            # Queued workflow completed normally.
+            if job_status == "finished":
+                job_result = status.get("result")
+
+                if (
+                    isinstance(job_result, dict)
+                    and job_result.get("success") is False
+                ):
+                    st.error("**Workflow completed with errors.**")
+                else:
+                    st.success("**Workflow completed successfully.**")
+
+            # Queued workflow failed.
+            elif job_status == "failed":
+                st.error("**Workflow failed. Check the workflow log.**")
+
+            # Queued workflow was cancelled.
+            elif job_status in {"canceled", "cancelled"}:
+                st.warning("**Workflow was cancelled.**")
+
+            # Local workflow completed.
+            elif "WORKFLOW FINISHED" in raw_log:
+                st.success("**Workflow completed successfully.**")
+
+            elif "WORKFLOW CANCELLED" in raw_log:
+                st.warning("**Workflow was cancelled.**")
+
+            # Status may only be temporarily unavailable.
+            else:
+                st.info(
+                    "**Workflow status is temporarily unavailable. "
+                    "Checking again automatically...**"
+                )
+
+            return
 
     def execution_section(
         self,

@@ -661,17 +661,10 @@ class Workflow(WorkflowManager):
         args.extend(["-perc_exe", self._percolator_path()])
         args.extend(["-perc_adapter", self._percolator_adapter_path()])
 
-        # Resource limits for NuXL rescoring.
-        #
-        # NUXL_RESCORE_MAX_PROCESSES controls Python multiprocessing used by
-        # DeepLC and MS2PIP through the NuXLApp wrapper.
-        #
-        # Start with 1 for the public hosted deployment. It can later be raised
-        # to 2 or 4 if memory measurements show sufficient headroom.
-        os.environ.setdefault(
-            "NUXL_RESCORE_MAX_PROCESSES",
-            "1",
-        )
+        # NuXL-rescore resource configuration
+        os.environ["NUXL_DEEPLC_N_JOBS"] = "1"
+        os.environ["NUXL_MS2PIP_NUM_CPU"] = "4"
+        os.environ["NUXL_MS2RESCORE_PROCESSES"] = "1"
 
         # These must use direct assignment rather than setdefault because the
         # Docker/base environment may already define higher values.

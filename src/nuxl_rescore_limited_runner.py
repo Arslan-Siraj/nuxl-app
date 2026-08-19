@@ -3,56 +3,40 @@ NuXLApp resource-limited runner for nuxl_rescore.
 
 This wrapper does NOT modify the installed nuxl_rescore package.
 
-It limits:
-1. DeepLC multiprocessing
-2. MS2PIP multiprocessing
-3. TensorFlow / BLAS / OpenMP thread fan-out
-
-The scientific workflow, models, features, and Percolator execution remain
-unchanged. Only computational parallelism is constrained.
+Resource configuration:
+- DeepLC: 1 worker
+- MS2PIP intensity prediction: 4 CPUs
+- MS2Rescore process pool: 1 process
+- BLAS / TensorFlow / OpenMP threads: 1
 """
 
 from __future__ import annotations
 
-import multiprocessing
 import os
-import sys
 
 
 # -------------------------------------------------------------------------
-# Resource configuration
+# Resource limits
 # -------------------------------------------------------------------------
 
-def _get_process_limit() -> int:
-    """
-    Maximum number of Python worker processes allowed for NuXL rescoring.
+DEEPLC_N_JOBS = max(
+    1,
+    int(os.environ.get("NUXL_DEEPLC_N_JOBS", "1")),
+)
 
-    Can be overridden by setting:
-        NUXL_RESCORE_MAX_PROCESSES
+MS2PIP_NUM_CPU = max(
+    1,
+    int(os.environ.get("NUXL_MS2PIP_NUM_CPU", "4")),
+)
 
-    Default = 1, which is safest for hosted Docker deployments.
-    """
-    value = os.environ.get("NUXL_RESCORE_MAX_PROCESSES", "2")
-
-    try:
-        value = int(value)
-    except (TypeError, ValueError):
-        value = 1
-
-    return max(1, value)
-
-
-MAX_PROCESSES = _get_process_limit()
+MS2RESCORE_PROCESSES = max(
+    1,
+    int(os.environ.get("NUXL_MS2RESCORE_PROCESSES", "1")),
+)
 
 
 # -------------------------------------------------------------------------
-# Limit native numerical-library thread fan-out.
-#
-# IMPORTANT:
-# Use direct assignment, NOT setdefault().
-#
-# A Docker/base environment may already contain values such as
-# OPENBLAS_NUM_THREADS=32. setdefault() would leave that unchanged.
+# Limit native numerical-library thread fan-out
 # -------------------------------------------------------------------------
 
 _THREAD_LIMITS = {
@@ -75,62 +59,68 @@ for _name, _value in _THREAD_LIMITS.items():
 
 # -------------------------------------------------------------------------
 # DeepLC protection
-#
-# DeepLC 1.2.1 uses multiprocessing.cpu_count() when n_jobs is not supplied.
-# nuxl_rescore 0.2.0 does not pass n_jobs.
-#
-# Therefore make cpu_count() report only the allowed number of processes
-# inside THIS subprocess.
-#
-# This does not modify Python globally or change the installed packages.
 # -------------------------------------------------------------------------
 
-_REAL_CPU_COUNT = multiprocessing.cpu_count
+def _patch_deeplc() -> None:
+    """
+    Force DeepLC to use a limited number of worker processes.
 
+    NuXL-rescore 0.2.0 constructs DeepLC without specifying n_jobs.
+    Instead of globally modifying multiprocessing.cpu_count(), patch only
+    the DeepLC constructor used by nuxl_rescore.RT_features.
+    """
 
-def _limited_cpu_count() -> int:
-    try:
-        available = _REAL_CPU_COUNT()
-    except Exception:
-        available = 1
+    import nuxl_rescore.RT_features as rt_features
+    from deeplc import DeepLC as OriginalDeepLC
 
-    if available is None:
-        available = 1
+    def LimitedDeepLC(*args, **kwargs):
+        kwargs["n_jobs"] = DEEPLC_N_JOBS
 
-    return max(1, min(int(available), MAX_PROCESSES))
+        print(
+            "NuXLApp resource guard: "
+            f"DeepLC n_jobs={DEEPLC_N_JOBS}",
+            flush=True,
+        )
 
+        return OriginalDeepLC(*args, **kwargs)
 
-multiprocessing.cpu_count = _limited_cpu_count
+    rt_features.DeepLC = LimitedDeepLC
 
 
 # -------------------------------------------------------------------------
-# NuXL-rescore MS2PIP protection
+# MS2PIP protection
 # -------------------------------------------------------------------------
 
 def _patch_ms2pip_limits() -> None:
     """
-    Patch nuxl_rescore's MS2PIP configuration in memory.
+    Configure NuXL-rescore MS2PIP resources in memory.
 
-    nuxl_rescore 0.2.0 initializes:
-        processes = 32
-        num_cpu   = 32
+    MS2PIP intensity prediction:
+        num_cpu = 4
 
-    We leave the package files untouched and replace only the values used
-    during this process.
+    MS2Rescore feature-generator process pool:
+        processes = 1
+
+    The installed nuxl_rescore package is not modified.
     """
 
     import nuxl_rescore.ms2pip_features as ms2pip_features
 
-    # First patch the module-level configuration.
+    # Patch current module-level CONFIG.
     try:
-        section = ms2pip_features.CONFIG.setdefault("ms2rescore", {})
-        section["processes"] = MAX_PROCESSES
-        section["num_cpu"] = MAX_PROCESSES
+        section = ms2pip_features.CONFIG.setdefault(
+            "ms2rescore",
+            {},
+        )
+
+        section["num_cpu"] = MS2PIP_NUM_CPU
+        section["processes"] = MS2RESCORE_PROCESSES
+
     except Exception:
         pass
 
-    # nuxl_rescore's initialize function recreates CONFIG and puts 32 back
-    # into it, so wrap that function as well.
+    # NuXL-rescore recreates CONFIG inside initilize_CONFIG(),
+    # so wrap that function to reapply our limits afterward.
     original_initialize = ms2pip_features.initilize_CONFIG
 
     def limited_initialize_CONFIG(
@@ -144,17 +134,24 @@ def _patch_ms2pip_limits() -> None:
             psm_file,
         )
 
-        section = config.setdefault("ms2rescore", {})
-        section["processes"] = MAX_PROCESSES
-        section["num_cpu"] = MAX_PROCESSES
+        section = config.setdefault(
+            "ms2rescore",
+            {},
+        )
 
-        # Keep module-level CONFIG synchronized as expected by nuxl_rescore.
+        # MS2PIP prediction itself
+        section["num_cpu"] = MS2PIP_NUM_CPU
+
+        # Separate MS2Rescore FeatureGenerator process count
+        section["processes"] = MS2RESCORE_PROCESSES
+
+        # Keep module-level CONFIG synchronized.
         ms2pip_features.CONFIG = config
 
         print(
             "NuXLApp resource guard: "
-            f"MS2PIP processes={MAX_PROCESSES}, "
-            f"num_cpu={MAX_PROCESSES}",
+            f"MS2PIP num_cpu={MS2PIP_NUM_CPU}, "
+            f"MS2Rescore processes={MS2RESCORE_PROCESSES}",
             flush=True,
         )
 
@@ -169,8 +166,15 @@ def _patch_ms2pip_limits() -> None:
 
 def main() -> None:
     print(
-        "NuXLApp resource guard enabled: "
-        f"maximum Python processes={MAX_PROCESSES}",
+        "NuXLApp resource guard enabled",
+        flush=True,
+    )
+
+    print(
+        "NuXLApp resource configuration: "
+        f"DeepLC n_jobs={DEEPLC_N_JOBS}, "
+        f"MS2PIP num_cpu={MS2PIP_NUM_CPU}, "
+        f"MS2Rescore processes={MS2RESCORE_PROCESSES}",
         flush=True,
     )
 
@@ -180,10 +184,10 @@ def main() -> None:
         flush=True,
     )
 
-    # Patch MS2PIP after our multiprocessing limit has already been installed.
+    _patch_deeplc()
     _patch_ms2pip_limits()
 
-    # Run exactly the original nuxl_rescore CLI.
+    # Run original NuXL-rescore CLI unchanged.
     from nuxl_rescore.main import main as nuxl_rescore_main
 
     nuxl_rescore_main()

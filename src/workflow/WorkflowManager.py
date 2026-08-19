@@ -148,9 +148,11 @@ class WorkflowManager:
                         "result": job_info.result,
                         "error": job_info.error,
                     }
-                else:
-                    # Job not found, clear the stored job ID
-                    self._queue_manager.clear_job_id(self.workflow_dir)
+
+                # Do NOT clear the job ID here.
+                # get_job_info() can temporarily return None when Redis/RQ status
+                # cannot be read. Keeping the ID allows the next polling cycle
+                # to recover automatically.
 
         # Fallback: check PID files (local mode)
         pid_dir = self.executor.pid_dir

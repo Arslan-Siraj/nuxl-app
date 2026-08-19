@@ -101,22 +101,30 @@ def execute_workflow(
 
         _update_progress(job, 0.15, "Executing workflow steps...")
 
-        # Execute the workflow
-        workflow.execution()
+        success = workflow.execution()
 
-        # Log workflow completion
-        logger.log("WORKFLOW FINISHED")
+        if success:
+            logger.log("WORKFLOW FINISHED")
+            _update_progress(job, 1.0, "Workflow completed")
 
-        _update_progress(job, 1.0, "Workflow completed")
+            result = {
+                "success": True,
+                "workflow_dir": str(workflow_path),
+                "message": "Workflow completed successfully",
+            }
+        else:
+            logger.log("ERROR: WORKFLOW FAILED")
+            _update_progress(job, 1.0, "Workflow failed")
 
-        # Clean up pid directory (in case it was created by accident)
+            result = {
+                "success": False,
+                "workflow_dir": str(workflow_path),
+                "error": "Workflow execution returned False",
+            }
+
         shutil.rmtree(executor.pid_dir, ignore_errors=True)
 
-        return {
-            "success": True,
-            "workflow_dir": str(workflow_path),
-            "message": "Workflow completed successfully"
-        }
+        return result
 
     except Exception as e:
         error_msg = f"Workflow failed: {str(e)}\n{traceback.format_exc()}"
