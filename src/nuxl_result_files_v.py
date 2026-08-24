@@ -13,19 +13,35 @@ import streamlit as st
 from pyopenms import IdXMLFile
 
 
-@st.cache_data(show_spinner="Reading idXML...")
-def readAndProcessIdXML_cached_v(input_file_str: str, file_mtime: float, top: int = 1):
+@st.cache_resource(
+    show_spinner="Reading idXML...",
+    max_entries=8,
+)
+def readAndProcessIdXML_cached_v(
+    input_file_str: str,
+    file_mtime: float,
+    top: int = 1,
+):
     """
     Convert an idXML identification file to a dataframe and cache the result.
 
     The file modification time is part of the cache key, so the cache is
     invalidated automatically when the idXML file changes.
+
+    cache_resource is intentional here because idXML result dataframes can
+    become very large, especially for 1.0000 output. The result dataframe is
+    treated as read-only by the Result Viewer.
     """
     input_file = Path(input_file_str)
 
     prot_ids = []
     pep_ids = []
-    IdXMLFile().load(str(input_file), prot_ids, pep_ids)
+
+    IdXMLFile().load(
+        str(input_file),
+        prot_ids,
+        pep_ids,
+    )
 
     meta_value_keys = []
     rows = []
@@ -35,12 +51,20 @@ def readAndProcessIdXML_cached_v(input_file_str: str, file_mtime: float, top: in
         return None
 
     for peptide_id in pep_ids:
-        spectrum_id = peptide_id.getMetaValue("spectrum_reference")
-        scan_nr = spectrum_id[spectrum_id.rfind("=") + 1:]
+        spectrum_id = peptide_id.getMetaValue(
+            "spectrum_reference"
+        )
+
+        scan_nr = spectrum_id[
+            spectrum_id.rfind("=") + 1:
+        ]
 
         hits = peptide_id.getHits()
 
-        for psm_index, h in enumerate(hits[:top], start=1):
+        for psm_index, h in enumerate(
+            hits[:top],
+            start=1,
+        ):
             charge = h.getCharge()
             score = h.getScore()
 
@@ -49,12 +73,21 @@ def readAndProcessIdXML_cached_v(input_file_str: str, file_mtime: float, top: in
             z4 = int(charge == 4)
             z5 = int(charge == 5)
 
-            label = int("target" in h.getMetaValue("target_decoy"))
+            label = int(
+                "target"
+                in h.getMetaValue("target_decoy")
+            )
+
             sequence = h.getSequence().toString()
 
             if len(meta_value_keys) == 0:
                 h.getKeys(meta_value_keys)
-                meta_value_keys = [x.decode() for x in meta_value_keys]
+
+                meta_value_keys = [
+                    x.decode()
+                    for x in meta_value_keys
+                ]
+
                 all_columns = [
                     "SpecId",
                     "PSMId",
@@ -75,13 +108,29 @@ def readAndProcessIdXML_cached_v(input_file_str: str, file_mtime: float, top: in
                 ] + meta_value_keys
 
             accessions = ";".join(
-                [s.decode() for s in h.extractProteinAccessionsSet()]
+                [
+                    s.decode()
+                    for s
+                    in h.extractProteinAccessionsSet()
+                ]
             )
 
             peak_annotation = h.getPeakAnnotations()
-            intensities = ",".join(str(peak.intensity) for peak in peak_annotation)
-            mz_values = ",".join(str(peak.mz) for peak in peak_annotation)
-            ions = ",".join(str(peak.annotation) for peak in peak_annotation)
+
+            intensities = ",".join(
+                str(peak.intensity)
+                for peak in peak_annotation
+            )
+
+            mz_values = ",".join(
+                str(peak.mz)
+                for peak in peak_annotation
+            )
+
+            ions = ",".join(
+                str(peak.annotation)
+                for peak in peak_annotation
+            )
 
             row = [
                 spectrum_id,
@@ -104,16 +153,22 @@ def readAndProcessIdXML_cached_v(input_file_str: str, file_mtime: float, top: in
 
             for k in meta_value_keys:
                 s = h.getMetaValue(k)
+
                 if isinstance(s, bytes):
                     s = s.decode()
+
                 row.append(s)
 
             rows.append(row)
 
-            # Preserve the previous behavior: parse only the first hit.
+            # Preserve previous behavior:
+            # only parse the first hit.
             break
 
-    df = pd.DataFrame(rows, columns=all_columns)
+    df = pd.DataFrame(
+        rows,
+        columns=all_columns,
+    )
 
     convert_dict = {
         "SpecId": str,
@@ -127,11 +182,15 @@ def readAndProcessIdXML_cached_v(input_file_str: str, file_mtime: float, top: in
     return df.astype(convert_dict)
 
 
-def readAndProcessIdXML_v(input_file, top: int = 1):
+def readAndProcessIdXML_v(
+    input_file,
+    top: int = 1,
+):
     """
     Cache-safe public wrapper for idXML parsing.
     """
     input_file = Path(input_file)
+
     return readAndProcessIdXML_cached_v(
         str(input_file.resolve()),
         input_file.stat().st_mtime,
@@ -139,8 +198,13 @@ def readAndProcessIdXML_v(input_file, top: int = 1):
     )
 
 
-@st.cache_data(show_spinner="Reading protein table...")
-def read_protein_table_cached_v(input_file_str: str, file_mtime: float):
+@st.cache_data(
+    show_spinner="Reading protein table..."
+)
+def read_protein_table_cached_v(
+    input_file_str: str,
+    file_mtime: float,
+):
     """
     Parse a NuXL protein TSV report into section dataframes and cache it.
     """
@@ -148,6 +212,7 @@ def read_protein_table_cached_v(input_file_str: str, file_mtime: float):
 
     section_dfs = []
     current_section = []
+
     skip_next_line = False
     use_next_line_as_header = False
 
@@ -155,72 +220,133 @@ def read_protein_table_cached_v(input_file_str: str, file_mtime: float):
         for line in f:
             line = line.strip()
 
-            if line.startswith("==") and line.endswith("=="):
+            if (
+                line.startswith("==")
+                and line.endswith("==")
+            ):
                 if current_section:
                     if use_next_line_as_header:
                         try:
                             section_df = pd.read_csv(
-                                StringIO("\n".join(current_section[1:])),
+                                StringIO(
+                                    "\n".join(
+                                        current_section[1:]
+                                    )
+                                ),
                                 delimiter="\t",
                                 header=None,
                             )
-                            section_df.columns = current_section[0].split("\t")
+
+                            section_df.columns = (
+                                current_section[0]
+                                .split("\t")
+                            )
+
                         except pd.errors.EmptyDataError:
                             section_df = pd.DataFrame(
-                                columns=current_section[0].split("\t")
+                                columns=(
+                                    current_section[0]
+                                    .split("\t")
+                                )
                             )
-                        section_dfs.append(section_df)
+
+                        section_dfs.append(
+                            section_df
+                        )
+
                         use_next_line_as_header = False
+
                     else:
                         try:
                             section_df = pd.read_csv(
-                                StringIO("\n".join(current_section)),
+                                StringIO(
+                                    "\n".join(
+                                        current_section
+                                    )
+                                ),
                                 delimiter="\t",
                             )
+
                         except pd.errors.EmptyDataError:
                             section_df = pd.DataFrame()
-                        section_dfs.append(section_df)
+
+                        section_dfs.append(
+                            section_df
+                        )
 
                     current_section = []
                     skip_next_line = True
+
             else:
                 if not skip_next_line:
-                    current_section.append(line)
+                    current_section.append(
+                        line
+                    )
 
                 skip_next_line = False
 
                 if (
-                    line.startswith("Protein summary")
-                    or line.startswith("Crosslink efficiency")
-                    or line.startswith("Precursor adduct summary")
+                    line.startswith(
+                        "Protein summary"
+                    )
+                    or line.startswith(
+                        "Crosslink efficiency"
+                    )
+                    or line.startswith(
+                        "Precursor adduct summary"
+                    )
                 ):
                     use_next_line_as_header = True
 
-                if line.startswith("Crosslink efficiency"):
+                if line.startswith(
+                    "Crosslink efficiency"
+                ):
                     use_next_line_as_header = False
+
                     header_line = next(f).strip()
-                    header = ["AA", "Crosslink efficiency"]
-                    current_section.append(header_line)
-                    current_section[0] = "\t".join(header)
+
+                    header = [
+                        "AA",
+                        "Crosslink efficiency",
+                    ]
+
+                    current_section.append(
+                        header_line
+                    )
+
+                    current_section[0] = (
+                        "\t".join(header)
+                    )
 
     if current_section:
         try:
             section_df = pd.read_csv(
-                StringIO("\n".join(current_section)),
+                StringIO(
+                    "\n".join(
+                        current_section
+                    )
+                ),
                 delimiter="\t",
             )
+
         except pd.errors.EmptyDataError:
             section_df = pd.DataFrame()
-        section_dfs.append(section_df)
+
+        section_dfs.append(
+            section_df
+        )
 
     return section_dfs
 
 
-def read_protein_table_v(input_file):
+def read_protein_table_v(
+    input_file,
+):
     """
     Cache-safe public wrapper for protein TSV parsing.
     """
     input_file = Path(input_file)
+
     return read_protein_table_cached_v(
         str(input_file.resolve()),
         input_file.stat().st_mtime,

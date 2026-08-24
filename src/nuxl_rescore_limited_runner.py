@@ -76,12 +76,7 @@ def _patch_deeplc() -> None:
     def LimitedDeepLC(*args, **kwargs):
         kwargs["n_jobs"] = DEEPLC_N_JOBS
 
-        print(
-            "NuXLApp resource guard: "
-            f"DeepLC n_jobs={DEEPLC_N_JOBS}",
-            flush=True,
-        )
-
+        
         return OriginalDeepLC(*args, **kwargs)
 
     rt_features.DeepLC = LimitedDeepLC
@@ -147,13 +142,6 @@ def _patch_ms2pip_limits() -> None:
 
         # Keep module-level CONFIG synchronized.
         ms2pip_features.CONFIG = config
-
-        print(
-            "NuXLApp resource guard: "
-            f"MS2PIP num_cpu={MS2PIP_NUM_CPU}, "
-            f"MS2Rescore processes={MS2RESCORE_PROCESSES}",
-            flush=True,
-        )
 
         return config
 
