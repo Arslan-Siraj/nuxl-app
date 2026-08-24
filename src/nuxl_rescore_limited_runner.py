@@ -165,24 +165,6 @@ def _patch_ms2pip_limits() -> None:
 # -------------------------------------------------------------------------
 
 def main() -> None:
-    print(
-        "NuXLApp resource guard enabled",
-        flush=True,
-    )
-
-    print(
-        "NuXLApp resource configuration: "
-        f"DeepLC n_jobs={DEEPLC_N_JOBS}, "
-        f"MS2PIP num_cpu={MS2PIP_NUM_CPU}, "
-        f"MS2Rescore processes={MS2RESCORE_PROCESSES}",
-        flush=True,
-    )
-
-    print(
-        "NuXLApp resource guard: "
-        "TensorFlow/BLAS/OpenMP threads=1",
-        flush=True,
-    )
 
     _patch_deeplc()
     _patch_ms2pip_limits()
