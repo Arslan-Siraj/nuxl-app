@@ -663,7 +663,7 @@ class Workflow(WorkflowManager):
 
         # NuXL-rescore resource configuration
         os.environ["NUXL_DEEPLC_N_JOBS"] = "1"
-        os.environ["NUXL_MS2PIP_NUM_CPU"] = "4"
+        os.environ["NUXL_MS2PIP_NUM_CPU"] = "2"
         os.environ["NUXL_MS2RESCORE_PROCESSES"] = "1"
 
         # These must use direct assignment rather than setdefault because the

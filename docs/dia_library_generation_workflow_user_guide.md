@@ -241,30 +241,6 @@ After the workflow is configured, this tab shows the execution controls and the 
 
 🧾 The **Summary** panel contains a short overview of the selected workflow settings and method information. It can be expanded to check the current setup before or during execution.
 
-#### Log details
-
-📜 The **Log details** dropdown controls which type of workflow messages are shown in the log window.
-
-Recommended setting:
-
-```text
-all
-```
-
-This shows the full workflow progress.
-
-#### Lines to show
-
-📏 The **lines to show** dropdown controls how many log lines are displayed.
-
-Recommended setting:
-
-```text
-all
-```
-
-If the log becomes very long, you can choose fewer lines to show only the most recent messages.
-
 #### Stop Workflow
 
 ⛔ The **Stop Workflow** button stops the currently running library generation.

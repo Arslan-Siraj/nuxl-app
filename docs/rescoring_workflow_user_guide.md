@@ -182,20 +182,6 @@ This section explains the **Run** tab of the NuXL Rescoring Workflow.
 
 🧾 The **Summary** panel contains a short overview of the selected workflow settings and method information.It can be expanded to check the current analysis setup before or during execution. Use this section to confirm that the selected input file, protocol, and feature options are correct.Also, give publication ready citation.
 
-#### Log details
-
-📜 The **Log details** dropdown controls which type of workflow messages are shown in the log window. `all` is shows the full workflow progress and is useful for checking what the workflow is doing.
-
-#### Lines to show
-
-📏 The **lines to show** dropdown controls how many log lines are displayed. `all` is useful when you want to see the full workflow history from start to finish.If the log becomes very long, you can choose fewer lines to show only the most recent messages.
-
-#### Stop Workflow
-
-⛔ The **Stop Workflow** button stops the currently running analysis.
-
-> ⚠️ **Warning:** Stop the workflow only if you need to cancel the current run, for example because the wrong input file, MGF file, protocol, or feature settings were selected.
-
 #### Live workflow log
 
 📜 The log window shows the current progress of the rescoring workflow.

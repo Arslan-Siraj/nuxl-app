@@ -138,22 +138,6 @@ After the workflow is configured, this tab shows the execution controls and the 
 
 🧾 The **Summary** panel contains a short overview of the selected workflow settings and method information. It can be expanded to check the current setup before or during execution.
 
-#### Log details
-
-📜 The **Log details** dropdown controls which type of workflow messages are shown in the log window. `all` is shows the full workflow progress and is useful for checking what the workflow is doing.
-
-#### Lines to show
-
-📏 The **lines to show** dropdown controls how many log lines are displayed.
-
-#### Stop Workflow
-
-⛔ The **Stop Workflow** button stops the currently running NuXL analysis.
-
-#### Live workflow log
-
-📜 The log window shows the current progress of the NuXL workflow.
-
 > ℹ️ **Info:** The live log helps track the current analysis step and is useful for troubleshooting if the workflow fails.
 
 #### When the workflow finishes
