@@ -430,6 +430,98 @@ class StreamlitUI:
         st.session_state[sess_key] = str(cwd)
         return cwd
 
+    @st.fragment(run_every=1.0)
+    def _render_running_workflow(
+        self,
+        log_path_string: str,
+        get_status_function=None,
+        stop_workflow_function=None,
+    ) -> None:
+        """
+        Poll only while a workflow is active.
+
+        This fragment refreshes every second for a responsive live log.
+        Once the workflow reaches a terminal state, it triggers one rerun of
+        the parent Run fragment. The completed page then becomes static.
+        """
+
+        if get_status_function:
+            try:
+                status = get_status_function() or {}
+            except Exception:
+                status = {}
+        else:
+            status = {}
+
+        is_running = status.get("running", False)
+        job_status = status.get("status", "unknown")
+
+        # -------------------------------------------------------------
+        # Workflow has finished / failed / been cancelled
+        # -------------------------------------------------------------
+        if not is_running and job_status in {
+            "finished",
+            "failed",
+            "canceled",
+            "cancelled",
+            "idle",
+        }:
+            # This fragment was started from the parent Run fragment.
+            # Trigger one parent-fragment refresh so the static completed
+            # UI, pseudo-ROC and download can be rendered.
+            st.rerun(scope="fragment")
+            return
+
+        # -------------------------------------------------------------
+        # Running controls
+        # -------------------------------------------------------------
+        c1, _ = st.columns(2)
+
+        if c1.button(
+            "Stop Workflow",
+            type="primary",
+            use_container_width=True,
+            key="workflow-stop-button-running",
+        ):
+            if stop_workflow_function:
+                stop_workflow_function()
+            else:
+                self.executor.stop()
+
+            st.rerun(scope="fragment")
+            return
+
+        # -------------------------------------------------------------
+        # Queue / running status
+        # -------------------------------------------------------------
+        if status.get("job_id"):
+            self._show_queue_status(status)
+
+        if job_status == "queued":
+            position = status.get("queue_position", "?")
+
+            st.info(
+                f"**Waiting in queue (position {position})...**"
+            )
+
+        elif job_status == "unknown":
+            st.info(
+                "**Workflow is active. Checking queue status...**"
+            )
+
+        else:
+            st.info(
+                "**Workflow running...**"
+            )
+
+        # -------------------------------------------------------------
+        # Live log
+        # -------------------------------------------------------------
+        self._render_live_log_fragment(
+            log_path_string=log_path_string,
+            get_status_function=get_status_function,
+        )
+
     def _mounted_drive_browser(
         self,
         key: str,

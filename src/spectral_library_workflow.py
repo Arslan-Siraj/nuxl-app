@@ -339,15 +339,14 @@ class Workflow(WorkflowManager):
             ),
         )
 
-    def show_execution_section(self) -> None:
-        self.ui.export_parameters_markdown = self._safe_export_parameters_markdown
-
-        self.ui.execution_section(
-            start_workflow_function=self.start_workflow,
-            get_status_function=self.get_workflow_status,
-            stop_workflow_function=self.stop_workflow,
+    def _prepare_execution_ui(self) -> None:
+        self.ui.export_parameters_markdown = (
+            self._safe_export_parameters_markdown
         )
-        self._render_latest_success_download()
+
+
+    def _render_post_execution(self) -> None:
+      self._render_latest_success_download()
 
     def execution(self) -> bool:
         self.params = self.parameter_manager.get_parameters_from_json()

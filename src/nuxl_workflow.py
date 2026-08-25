@@ -120,13 +120,7 @@ class Workflow(WorkflowManager):
     def __init__(self) -> None:
         super().__init__("NuXL Workflow", st.session_state["workspace"])
 
-    def show_execution_section(self) -> None:
-        """
-        Render the standard WorkflowManager execution section and, after a
-        successful NuXL run, show the download link directly at the bottom of
-        the execution page.
-        """
-        super().show_execution_section()
+    def _render_post_execution(self) -> None:
         self._render_latest_nuxl_download_link()
 
     def upload(self) -> None:

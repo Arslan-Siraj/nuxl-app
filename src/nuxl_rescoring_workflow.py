@@ -478,23 +478,14 @@ class Workflow(WorkflowManager):
                 help="Generate a pseudo-ROC comparison plot when reference files are available.",
             )
 
-    def show_execution_section(self) -> None:
-        """
-        Render the normal execution section, but avoid StreamlitUI's default
-        export_parameters_markdown() subprocess call.
-
-        On Windows, the default summary can spawn an extra OpenMS helper process
-        just to render the Summary box. If memory/pagefile is low, that can fail
-        before the workflow starts. Rescoring uses this lightweight summary instead.
-        """
-        self.ui.export_parameters_markdown = self._safe_export_parameters_markdown
-
-        self.ui.execution_section(
-            start_workflow_function=self.start_workflow,
-            get_status_function=self.get_workflow_status,
-            stop_workflow_function=self.stop_workflow,
+    def _prepare_execution_ui(self) -> None:
+        self.ui.export_parameters_markdown = (
+            self._safe_export_parameters_markdown
         )
-        self._render_latest_success_download()
+
+
+    def _render_post_execution(self) -> None:
+       self._render_latest_success_download()
 
     def _safe_export_parameters_markdown(self) -> str:
         params = self.parameter_manager.get_parameters_from_json()
@@ -663,11 +654,12 @@ class Workflow(WorkflowManager):
 
         # NuXL-rescore resource configuration
         os.environ["NUXL_DEEPLC_N_JOBS"] = "1"
-        os.environ["NUXL_MS2PIP_NUM_CPU"] = "4"
+        os.environ["NUXL_MS2PIP_NUM_CPU"] = "2"
         os.environ["NUXL_MS2RESCORE_PROCESSES"] = "1"
 
-        # These must use direct assignment rather than setdefault because the
-        # Docker/base environment may already define higher values.
+        # Force Python subprocess output to be unbuffered
+        os.environ["PYTHONUNBUFFERED"] = "1"
+
         os.environ["OMP_NUM_THREADS"] = "1"
         os.environ["OMP_THREAD_LIMIT"] = "1"
         os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -943,8 +935,8 @@ class Workflow(WorkflowManager):
         """
         Run nuxl_rescore through the NuXLApp resource-limited wrapper.
 
-        The wrapper leaves the installed nuxl_rescore package unchanged but limits
-        DeepLC/MS2PIP multiprocessing to prevent container OOM kills.
+        Python is executed in unbuffered mode so stdout/stderr from the
+        rescoring process can be written to the live workflow log immediately.
         """
 
         runner = Path(__file__).with_name(
@@ -968,12 +960,14 @@ class Workflow(WorkflowManager):
                 if python_exe.exists():
                     return [
                         str(python_exe),
+                        "-u",
                         str(runner),
                         "run",
                     ]
 
             return [
                 "python",
+                "-u",
                 str(runner),
                 "run",
             ]
@@ -981,6 +975,7 @@ class Workflow(WorkflowManager):
         # Docker / Linux / Apptainer
         return [
             sys.executable,
+            "-u",
             str(runner),
             "run",
         ]

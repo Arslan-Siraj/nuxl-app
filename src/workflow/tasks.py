@@ -56,8 +56,18 @@ def execute_workflow(
 
         _update_progress(job, 0.05, "Loading parameters...")
 
-        # Delete the log file if it already exists
-        shutil.rmtree(Path(workflow_path, "logs"), ignore_errors=True)
+        # Keep the log directory created by the frontend.
+        # This allows the Run page to show an immediate
+        # "waiting for worker" message after submission.
+        log_dir = Path(
+            workflow_path,
+            "logs",
+        )
+
+        log_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
         # Load parameters from saved params.json
         params_file = workflow_path / "params.json"
@@ -165,3 +175,58 @@ def _update_progress(job, progress: float, step: str) -> None:
             job.save_meta()
         except Exception:
             pass  # Ignore errors updating progress
+
+
+def _prepare_new_run(self) -> None:
+    """
+    Remove workflow-local output from the previous run and prepare
+    fresh log/result directories for the new run.
+    """
+
+    shutil.rmtree(
+        Path(self.workflow_dir, "logs"),
+        ignore_errors=True,
+    )
+
+    shutil.rmtree(
+        Path(self.workflow_dir, "results"),
+        ignore_errors=True,
+    )
+
+    # Recreate results directory
+    Path(
+        self.workflow_dir,
+        "results",
+    ).mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    # -------------------------------------------------------------
+    # Create fresh log files immediately
+    # -------------------------------------------------------------
+    log_dir = Path(
+        self.workflow_dir,
+        "logs",
+    )
+
+    log_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    initial_message = (
+        "Workflow submitted. Waiting for worker to start...\n"
+    )
+
+    for log_name in [
+        "all.log",
+        "minimal.log",
+        "commands-and-run-times.log",
+    ]:
+        (
+            log_dir / log_name
+        ).write_text(
+            initial_message,
+            encoding="utf-8",
+        )
