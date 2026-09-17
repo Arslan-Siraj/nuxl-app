@@ -1566,7 +1566,7 @@ class StreamlitUI:
                 ):
                     st.error("**Workflow completed with errors.**")
                 else:
-                    st.success("**Workflow completed successfully.**")
+                    st.rerun()
 
             # Queued workflow failed.
             elif job_status == "failed":
@@ -1578,7 +1578,7 @@ class StreamlitUI:
 
             # Local workflow completed.
             elif "WORKFLOW FINISHED" in raw_log:
-                st.success("**Workflow completed successfully.**")
+                st.rerun()
 
             elif "WORKFLOW CANCELLED" in raw_log:
                 st.warning("**Workflow was cancelled.**")

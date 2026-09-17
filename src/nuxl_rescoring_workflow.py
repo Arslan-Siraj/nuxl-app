@@ -1619,12 +1619,29 @@ class Workflow(WorkflowManager):
         try:
             from src.view import plot_FDR_plot
 
-            fig, _ = plot_FDR_plot(
-                idXML_id=str(idxml_original_100_xls),
-                idXML_extra=str(idxml_rescored_100_xls),
-                FDR_level=20,
-                exp_name=str(state.get("id_stem") or idxml_rescored_100_xls.stem),
-            )
+            run_id = state.get("created_at")
+            cache_key = "_rescoring_pseudoroc"
+
+            cached = st.session_state.get(cache_key)
+
+            if not cached or cached.get("run_id") != run_id:
+                fig, _ = plot_FDR_plot(
+                    idXML_id=str(idxml_original_100_xls),
+                    idXML_extra=str(idxml_rescored_100_xls),
+                    FDR_level=20,
+                    exp_name=str(
+                        state.get("id_stem")
+                        or idxml_rescored_100_xls.stem
+                    ),
+                )
+
+                st.session_state[cache_key] = {
+                    "run_id": run_id,
+                    "fig": fig,
+                }
+            else:
+                fig = cached["fig"]
+
             show_fig(
                 fig,
                 f"{idxml_rescored_100_xls.stem}_PseudoROC_plot_rescoring",
