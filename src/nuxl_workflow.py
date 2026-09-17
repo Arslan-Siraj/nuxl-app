@@ -1405,8 +1405,21 @@ class Workflow(WorkflowManager):
             """
         )
 
+        # Read the complete workflow log generated during OpenNuXL execution.
+        all_log_path = Path(self.workflow_dir, "logs", "all.log")
+
+        if all_log_path.exists():
+            all_log_content = all_log_path.read_text(
+                encoding="utf-8",
+                errors="replace",
+            )
+        else:
+            all_log_content = "No workflow all.log file was available."
+
         with open(log_file_path, "w", encoding="utf-8") as handle:
             handle.write(search_param)
+            handle.write("\n\n======= Full workflow log =======\n")
+            handle.write(all_log_content)
 
         self.logger.log(f"Wrote NuXL parameter log: {log_file_path}")
         return log_file_path
