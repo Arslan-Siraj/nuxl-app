@@ -29,10 +29,10 @@ spec:
             - name: REDIS_URL
               value: "redis://redis:6379/0"
             - name: WORKSPACES_DIR
-              value: "/workspaces-streamlit-template"
+              value: "/workspaces-nuxl-app"
           volumeMounts:
             - name: workspaces
-              mountPath: /workspaces-streamlit-template
+              mountPath: /workspaces-nuxl-app
             - name: config
               mountPath: /app/settings-overrides.json
               subPath: settings-overrides.json

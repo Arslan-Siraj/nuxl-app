@@ -8,6 +8,6 @@ data:
       "online_deployment": true,
       "demo_workspaces": {
         "enabled": true,
-        "source_dirs": ["/workspaces-streamlit-template/.demos"]
+        "source_dirs": ["/workspaces-nuxl-app/.demos"]
       }
     }

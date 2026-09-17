@@ -28,10 +28,10 @@ spec:
                   exec python clean-up-workspaces.py
               env:
                 - name: WORKSPACES_DIR
-                  value: "/workspaces-streamlit-template"
+                  value: "/workspaces-nuxl-app"
               volumeMounts:
                 - name: workspaces
-                  mountPath: /workspaces-streamlit-template
+                  mountPath: /workspaces-nuxl-app
               resources:
                 requests:
                   memory: "256Mi"
