@@ -662,9 +662,9 @@ class Workflow(WorkflowManager):
         args.extend(["-perc_adapter", self._percolator_adapter_path()])
 
         # NuXL-rescore resource configuration
-        os.environ["NUXL_DEEPLC_N_JOBS"] = "1"
-        os.environ["NUXL_MS2PIP_NUM_CPU"] = "2"
-        os.environ["NUXL_MS2RESCORE_PROCESSES"] = "1"
+        os.environ["NUXL_DEEPLC_N_JOBS"] = "2"
+        os.environ["NUXL_MS2PIP_NUM_CPU"] = "4"
+        os.environ["NUXL_MS2RESCORE_PROCESSES"] = "1" #leave it:: out of scope for NuXLApp
 
         # These must use direct assignment rather than setdefault because the
         # Docker/base environment may already define higher values.
@@ -681,12 +681,6 @@ class Workflow(WorkflowManager):
         os.environ["MALLOC_ARENA_MAX"] = "2"
 
         self.logger.log(f"Rescoring idXML file: {idxml_file}")
-        #self.logger.log(f"Protocol: {protocol}")
-        #self.logger.log(f"Retention-time features: {retention_time_features}")
-        #self.logger.log(f"Max-correlation features: {max_correlation_features}")
-        #self.logger.log(f"Resolved NuXL-rescore command prefix: {self._nuxl_rescore_command_prefix()}")
-        #self.logger.log(f"Resolved Percolator: {self._percolator_path()}")
-        #self.logger.log(f"Resolved PercolatorAdapter: {self._percolator_adapter_path()}")
         self.logger.log("Running NuXL rescoring...")
 
         success = self.executor.run_command(args)
