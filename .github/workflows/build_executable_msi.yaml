@@ -130,45 +130,54 @@ jobs:
       run: |
         $batContent = @"
         @echo off
+
+        REM Always run from the NuXLApp installation directory
+        set "APP_DIR=%~dp0"
+        cd /d "%APP_DIR%"
+
+        REM Make bundled OpenMS executables discoverable.
+        REM OpenNuXL launches PercolatorAdapter by executable name.
+        set "PATH=%APP_DIR%;%PATH%"
+
         set PYTHON=.\python-3.10.0\python
         set REQ=.\requirements_embd_py310_win.txt
         set MARKER=.\python-3.10.0\.deps_installed
-        
+
         REM If marker exists, skip installation
         if exist "%MARKER%" goto RUN_APP
-        
+
         echo Preparing Python environment for launching App...
-        
+
         REM Ensure pip exists
         "%PYTHON%" -m ensurepip >nul 2>&1
-        
+
         REM Attempt installation
         "%PYTHON%" -m pip install -r "%REQ%" --no-warn-script-location
         if errorlevel 1 (
             echo Dependency installation failed or was interrupted.
             exit /b 1
         )
-        
+
         REM Copy NuXL share folder to pyopenms share
         xcopy /E /I /Y ".\NuXL" ".\python-3.10.0\Lib\site-packages\pyopenms\share\OpenMS\NuXL"
-        
+
         REM Rename folder
         if exist "streamlit" ren "streamlit" ".streamlit"
-        
+
         "%PYTHON%" -m pip install "setuptools<82" --no-warn-script-location
         if errorlevel 1 (
             echo Failed to install compatible setuptools.
             exit /b 1
         )
-        
+
         REM Create marker only after full success
         echo OK>"%MARKER%"
-        
+
         :RUN_APP
         start /min "" "%PYTHON%" -m streamlit run app.py
         "@
-        
-            $batContent | Set-Content -Encoding ASCII "${{ env.APP_NAME }}.bat"
+
+        $batContent | Set-Content -Encoding ASCII "${{ env.APP_NAME }}.bat"
             
     - name: Verify .streamlit folder exists
       shell: bash
