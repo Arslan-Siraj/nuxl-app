@@ -9,8 +9,8 @@ spec:
         - name: rq-worker
           resources:
             requests:
-              memory: "1Gi"
-              cpu: "500m"
-            limits:
-              memory: "16Gi"
+              memory: "8Gi"
               cpu: "4"
+            limits:
+              memory: "32Gi"
+              cpu: "8"

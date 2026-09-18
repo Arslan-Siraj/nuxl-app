@@ -3,6 +3,9 @@ import os
 import shutil
 import sys
 import textwrap
+import time
+import traceback
+import platform
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -495,6 +498,28 @@ class Workflow(WorkflowManager):
             stop_workflow_function=self.stop_workflow,
         )
         self._render_latest_success_download()
+        self._render_diagnostic_download()
+
+    def _render_diagnostic_download(self) -> None:
+        """Offer the persistent rescoring diagnostic log for download."""
+        diagnostic_file = Path(self.workflow_dir, "logs", "rescoring_diagnostic.log")
+        if not diagnostic_file.exists():
+            return
+
+        try:
+            diagnostic_data = diagnostic_file.read_bytes()
+        except OSError as exc:
+            st.warning(f"Could not read rescoring diagnostic log: {exc}")
+            return
+
+        st.download_button(
+            label="⬇️ Download rescoring diagnostic log",
+            data=diagnostic_data,
+            file_name="rescoring_diagnostic.log",
+            mime="text/plain",
+            use_container_width=True,
+            key="download-rescoring-diagnostic-log",
+        )
 
     def _safe_export_parameters_markdown(self) -> str:
         params = self.parameter_manager.get_parameters_from_json()
@@ -581,7 +606,80 @@ class Workflow(WorkflowManager):
 
         return "\n".join(lines)
 
+    def _write_diagnostic(self, message: str) -> None:
+        """Write persistent diagnostics for the NuXL rescoring workflow."""
+        log_dir = Path(self.workflow_dir, "logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        diagnostic_file = log_dir / "rescoring_diagnostic.log"
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lines = [
+            "",
+            "=" * 70,
+            f"[{timestamp}] {message}",
+            f"PID: {os.getpid()}",
+            f"Hostname: {platform.node()}",
+            f"CPU count: {os.cpu_count()}",
+        ]
+
+        try:
+            # Linux/Kubernetes cgroup memory is more useful than node-wide memory.
+            current_path = Path("/sys/fs/cgroup/memory.current")
+            max_path = Path("/sys/fs/cgroup/memory.max")
+            if current_path.exists():
+                current_raw = current_path.read_text(encoding="utf-8").strip()
+                lines.append(
+                    f"Cgroup memory current: {int(current_raw) / (1024 ** 3):.2f} GB"
+                )
+            if max_path.exists():
+                max_raw = max_path.read_text(encoding="utf-8").strip()
+                if max_raw == "max":
+                    lines.append("Cgroup memory max: unlimited")
+                else:
+                    lines.append(
+                        f"Cgroup memory max: {int(max_raw) / (1024 ** 3):.2f} GB"
+                    )
+        except Exception as exc:
+            lines.append(f"Cgroup memory diagnostics unavailable: {exc}")
+
+        try:
+            # psutil is optional: diagnostics still work if it is unavailable.
+            import psutil
+
+            process = psutil.Process(os.getpid())
+            process_rss = process.memory_info().rss
+            children = process.children(recursive=True)
+            tree_rss = process_rss
+
+            lines.append(f"Process RSS: {process_rss / (1024 ** 3):.2f} GB")
+            lines.append(f"Child processes: {len(children)}")
+
+            for child in children:
+                try:
+                    child_rss = child.memory_info().rss
+                    tree_rss += child_rss
+                    lines.append(
+                        f"  Child PID {child.pid}: {child.name()} "
+                        f"RSS={child_rss / (1024 ** 3):.2f} GB"
+                    )
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+
+            lines.append(f"Process-tree RSS: {tree_rss / (1024 ** 3):.2f} GB")
+        except Exception as exc:
+            lines.append(f"psutil diagnostics unavailable: {exc}")
+
+        lines.append("=" * 70)
+
+        with open(diagnostic_file, "a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
     def execution(self) -> bool:
+        start_time = time.time()
+        self._write_diagnostic("NuXL rescoring execution() STARTED")
+
         self.params = self.parameter_manager.get_parameters_from_json()
 
         # Refresh valid initial idXML files and existing global MGF files when the job starts.
@@ -613,8 +711,13 @@ class Workflow(WorkflowManager):
         result_dir.mkdir(parents=True, exist_ok=True)
 
         try:
+            self._write_diagnostic("Preparing NuXL-rescore resources")
             resources = self._ensure_resources()
+            self._write_diagnostic("NuXL-rescore resources prepared successfully")
         except Exception as exc:
+            self._write_diagnostic(
+                f"RESOURCE PREPARATION FAILED: {exc}\n{traceback.format_exc()}"
+            )
             self.logger.log(f"ERROR: Failed to prepare NuXL rescoring resources: {exc}")
             return False
 
@@ -662,8 +765,8 @@ class Workflow(WorkflowManager):
         args.extend(["-perc_adapter", self._percolator_adapter_path()])
 
         # NuXL-rescore resource configuration
-        os.environ["NUXL_DEEPLC_N_JOBS"] = "2"
-        os.environ["NUXL_MS2PIP_NUM_CPU"] = "4"
+        os.environ["NUXL_DEEPLC_N_JOBS"] = "1"
+        os.environ["NUXL_MS2PIP_NUM_CPU"] = "2"
         os.environ["NUXL_MS2RESCORE_PROCESSES"] = "1" #leave it:: out of scope for NuXLApp
 
         # These must use direct assignment rather than setdefault because the
@@ -683,7 +786,35 @@ class Workflow(WorkflowManager):
         self.logger.log(f"Rescoring idXML file: {idxml_file}")
         self.logger.log("Running NuXL rescoring...")
 
-        success = self.executor.run_command(args)
+        self._write_diagnostic(
+            "ABOUT TO START NuXL-rescore subprocess\n"
+            f"Protocol: {protocol}\n"
+            f"Retention-time features: {retention_time_features}\n"
+            f"Max-correlation features: {max_correlation_features}\n"
+            f"DeepLC jobs: {os.environ.get('NUXL_DEEPLC_N_JOBS')}\n"
+            f"MS2PIP CPUs: {os.environ.get('NUXL_MS2PIP_NUM_CPU')}\n"
+            f"MS2Rescore processes: {os.environ.get('NUXL_MS2RESCORE_PROCESSES')}"
+        )
+
+        rescore_start_time = time.time()
+        try:
+            success = self.executor.run_command(args)
+        except BaseException as exc:
+            elapsed = time.time() - rescore_start_time
+            self._write_diagnostic(
+                f"NuXL-rescore SUBPROCESS EXCEPTION after {elapsed:.1f} seconds\n"
+                f"Exception type: {type(exc).__name__}\n"
+                f"Exception: {exc}\n"
+                f"{traceback.format_exc()}"
+            )
+            raise
+
+        elapsed = time.time() - rescore_start_time
+        self._write_diagnostic(
+            f"NuXL-rescore subprocess RETURNED\n"
+            f"Elapsed: {elapsed:.1f} seconds\n"
+            f"Success: {success}"
+        )
 
         log_file_path = self._write_rescoring_log(
             result_dir=result_dir,
@@ -741,6 +872,12 @@ class Workflow(WorkflowManager):
             idxml_original_100_xls=original_100_xls,
             idxml_rescored_100_xls=expected_100_xls,
             pseudoroc_pdf=pseudoroc_pdf,
+        )
+
+        total_elapsed = time.time() - start_time
+        self._write_diagnostic(
+            "NuXL rescoring workflow COMPLETED SUCCESSFULLY\n"
+            f"Total elapsed: {total_elapsed:.1f} seconds"
         )
 
         self.logger.log("NuXL rescoring completed successfully.")
