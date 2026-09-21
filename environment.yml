@@ -16,3 +16,7 @@ dependencies:
     - streamlit-aggrid==0.3.4.post3
     - captcha==0.7.1
     - psutil==7.2.1
+
+    # Redis/RQ for Kubernetes online workflow execution
+    - redis>=5.0.0
+    - rq>=1.16.0

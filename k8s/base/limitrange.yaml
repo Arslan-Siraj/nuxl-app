@@ -6,10 +6,10 @@ spec:
   limits:
     - type: Container
       defaultRequest:
-        memory: "8Gi"
+        memory: "4Gi"
         cpu: "4"
       default:
-        memory: "12Gi"
+        memory: "4Gi"
         cpu: "4"
       max:
         memory: "200Gi"
