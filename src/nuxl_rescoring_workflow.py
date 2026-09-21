@@ -517,6 +517,11 @@ class Workflow(WorkflowManager):
             data=diagnostic_data,
             file_name="rescoring_diagnostic.log",
             mime="text/plain",
+            help=(
+                "Download the diagnostic log for troubleshooting NuXL rescoring. "
+                "The log contains runtime information such as memory usage, CPU settings, "
+                "workflow stages, and subprocess execution status."
+            ),
             use_container_width=True,
             key="download-rescoring-diagnostic-log",
         )
