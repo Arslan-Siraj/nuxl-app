@@ -9,8 +9,8 @@ spec:
         - name: streamlit
           resources:
             requests:
-              memory: "12Gi"
-              cpu: "6"
+              memory: "512Mi"
+              cpu: "500m"
             limits:
-              memory: "24Gi"
-              cpu: "8"
+              memory: "10Gi"
+              cpu: "4"

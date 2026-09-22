@@ -28,6 +28,7 @@ patches:
       - op: replace
         path: /spec/routes/0/services/0/name
         value: nuxl-app-streamlit
+
   - target:
       kind: Deployment
       name: streamlit
@@ -35,10 +36,14 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/env/0/value
         value: "redis://nuxl-app-redis:6379/0"
+
   - target:
       kind: Deployment
       name: rq-worker
     patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
       - op: replace
         path: /spec/template/spec/containers/0/env/0/value
         value: "redis://nuxl-app-redis:6379/0"
