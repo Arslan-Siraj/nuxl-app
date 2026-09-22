@@ -61,6 +61,16 @@ class WorkflowManager:
         """Submit workflow to Redis queue (online mode)"""
         from .tasks import execute_workflow
 
+        # Clear logs from the previous run before putting the new workflow
+        # into the queue. Otherwise, while the job is waiting for a worker,
+        # Streamlit would continue displaying the previous workflow log.
+        #
+        # This mirrors the existing local execution behavior.
+        shutil.rmtree(
+            Path(self.workflow_dir, "logs"),
+            ignore_errors=True,
+        )
+
         # Generate unique job ID based on workflow directory
         job_id = f"workflow-{self.workflow_dir.name}-{int(time.time())}"
 
@@ -78,7 +88,10 @@ class WorkflowManager:
 
         if submitted_id:
             # Store job ID for status checking
-            self._queue_manager.store_job_id(self.workflow_dir, submitted_id)
+            self._queue_manager.store_job_id(
+                self.workflow_dir,
+                submitted_id,
+            )
         else:
             # Fallback to local execution if queue submission fails
             st.warning("Queue submission failed, running locally...")
