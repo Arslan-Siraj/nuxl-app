@@ -483,12 +483,10 @@ class Workflow(WorkflowManager):
 
     def show_execution_section(self) -> None:
         """
-        Render the normal execution section, but avoid StreamlitUI's default
-        export_parameters_markdown() subprocess call.
+        Render the rescoring execution section.
 
-        On Windows, the default summary can spawn an extra OpenMS helper process
-        just to render the Summary box. If memory/pagefile is low, that can fail
-        before the workflow starts. Rescoring uses this lightweight summary instead.
+        Previous post-run output/download UI is hidden while a new job is queued
+        or running.
         """
         self.ui.export_parameters_markdown = self._safe_export_parameters_markdown
 
@@ -497,8 +495,10 @@ class Workflow(WorkflowManager):
             get_status_function=self.get_workflow_status,
             stop_workflow_function=self.stop_workflow,
         )
-        self._render_latest_success_download()
-        self._render_diagnostic_download()
+
+        if not self.get_workflow_status().get("running", False):
+            self._render_latest_success_download()
+            self._render_diagnostic_download()
 
     def _render_diagnostic_download(self) -> None:
         """Offer the persistent rescoring diagnostic log for download."""
@@ -1628,6 +1628,16 @@ class Workflow(WorkflowManager):
         result_dir: Path,
         zip_path: Path,
     ) -> Path:
+        """
+        Copy rescoring outputs to the global result-files folder.
+
+        Generated rescoring outputs use stable logical filenames. If the same
+        output already exists, shutil.copy2() overwrites it instead of creating
+        _1, _2, _3, ... variants.
+
+        Timestamped rescoring log files remain separate because their source
+        filenames already contain timestamps.
+        """
         global_result_dir = Path(self.workflow_dir).parent / "result-files"
         global_result_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1639,8 +1649,9 @@ class Workflow(WorkflowManager):
                 continue
 
             target_name = self._global_rescoring_output_name(source_file.name)
-            target_file = self._unique_file_path(global_result_dir / target_name)
+            target_file = global_result_dir / target_name
 
+            # copy2 overwrites target_file when it already exists.
             shutil.copy2(source_file, target_file)
             copied_files.append(target_file)
 
@@ -1649,13 +1660,12 @@ class Workflow(WorkflowManager):
 
         if global_zip_path is None:
             target_name = self._global_rescoring_output_name(zip_path.name)
-            global_zip_path = self._unique_file_path(global_result_dir / target_name)
+            global_zip_path = global_result_dir / target_name
             shutil.copy2(zip_path, global_zip_path)
             copied_files.append(global_zip_path)
 
         self.logger.log(
             "Copied rescoring output file(s) directly to global result-files\n"
-            #+ "\n".join(f"- {file}" for file in copied_files)
         )
 
         return global_zip_path

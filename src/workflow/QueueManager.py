@@ -162,13 +162,11 @@ class QueueManager:
 
     def get_job_info(self, job_id: str) -> Optional[JobInfo]:
         """
-        Get information about a job.
+        Get fresh information about an RQ job.
 
-        Args:
-            job_id: The job ID to query
-
-        Returns:
-            JobInfo object or None if not found
+        Uses refresh=True and checks active executions/StartedJobRegistry so the
+        UI does not continue showing "Queued" after a worker has already picked
+        up the job.
         """
         if not self.is_available:
             return None
@@ -178,8 +176,12 @@ class QueueManager:
 
             job = Job.fetch(job_id, connection=self._redis)
 
-            # 'stopped' is what RQ records after send_stop_job_command runs;
-            # surface it as CANCELED so the UI doesn't show stopped jobs as queued.
+            # Always read the latest status directly from Redis.
+            rq_status = job.get_status(refresh=True)
+
+            # RQ versions may return either a string or an enum-like value.
+            status_value = getattr(rq_status, "value", rq_status)
+
             status_map = {
                 "queued": JobStatus.QUEUED,
                 "started": JobStatus.STARTED,
@@ -190,19 +192,60 @@ class QueueManager:
                 "stopped": JobStatus.CANCELED,
             }
 
-            status = status_map.get(job.get_status(), JobStatus.QUEUED)
+            status = status_map.get(status_value, JobStatus.QUEUED)
 
-            # Get progress from job meta
-            meta = job.meta or {}
+            # If the normal status still says queued, check the started registry.
+            # RQ places a job there when a worker actually begins execution.
+            if status == JobStatus.QUEUED:
+                try:
+                    started_job_ids = (
+                        self._queue.started_job_registry.get_job_ids()
+                    )
+                    if job_id in started_job_ids:
+                        status = JobStatus.STARTED
+                except Exception:
+                    pass
+
+            # Fresh progress/current_step metadata.
+            try:
+                meta = job.get_meta(refresh=True) or {}
+            except Exception:
+                meta = job.meta or {}
+
             progress = meta.get("progress", 0.0)
             current_step = meta.get("current_step", "")
 
-            # Calculate queue position if queued
+            execution_started_at = None
+
+            # RQ 2.x also exposes active Execution objects.
+            if status == JobStatus.QUEUED:
+                try:
+                    executions = job.get_executions()
+
+                    if executions:
+                        status = JobStatus.STARTED
+
+                        execution_times = [
+                            execution.created_at
+                            for execution in executions
+                            if getattr(execution, "created_at", None)
+                        ]
+
+                        if execution_times:
+                            execution_started_at = min(execution_times)
+
+                except Exception:
+                    pass
+
             queue_position = None
             queue_length = None
+
             if status == JobStatus.QUEUED:
                 queue_position = self._get_job_position(job_id)
                 queue_length = len(self._queue)
+
+            # Fetch refreshed fields after status/meta refresh.
+            started_at = job.started_at or execution_started_at
 
             return JobInfo(
                 job_id=job.id,
@@ -214,9 +257,10 @@ class QueueManager:
                 result=job.result if status == JobStatus.FINISHED else None,
                 error=str(job.exc_info) if job.exc_info else None,
                 enqueued_at=str(job.enqueued_at) if job.enqueued_at else None,
-                started_at=str(job.started_at) if job.started_at else None,
+                started_at=str(started_at) if started_at else None,
                 ended_at=str(job.ended_at) if job.ended_at else None,
             )
+
         except Exception:
             return None
 

@@ -122,12 +122,13 @@ class Workflow(WorkflowManager):
 
     def show_execution_section(self) -> None:
         """
-        Render the standard WorkflowManager execution section and, after a
-        successful NuXL run, show the download link directly at the bottom of
-        the execution page.
+        Render the standard execution section and show the previous download
+        only when no new workflow is currently queued/running.
         """
         super().show_execution_section()
-        self._render_latest_nuxl_download_link()
+
+        if not self.get_workflow_status().get("running", False):
+            self._render_latest_nuxl_download_link()
 
     def upload(self) -> None:
         st.info(

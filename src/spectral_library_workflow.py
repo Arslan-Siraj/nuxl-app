@@ -347,7 +347,11 @@ class Workflow(WorkflowManager):
             get_status_function=self.get_workflow_status,
             stop_workflow_function=self.stop_workflow,
         )
-        self._render_latest_success_download()
+
+        # Do not leave output from the previous run visible while a new job is
+        # queued or running.
+        if not self.get_workflow_status().get("running", False):
+            self._render_latest_success_download()
 
     def execution(self) -> bool:
         self.params = self.parameter_manager.get_parameters_from_json()

@@ -1500,7 +1500,8 @@ class StreamlitUI:
         """
         Read and display the complete all.log file every two seconds.
 
-        Only this fragment reruns. The remainder of the Run page stays static.
+        Only this fragment reruns. If an RQ job moves from queued to started,
+        force one full-page rerun so stale post-run UI is removed.
         """
         log_path = Path(log_path_string)
 
@@ -1541,22 +1542,41 @@ class StreamlitUI:
 
         is_running = status.get("running", False)
         job_status = status.get("status", "unknown")
+        job_id = status.get("job_id")
+
+        # A fragment rerun alone does not rebuild workflow-specific UI below the
+        # execution section. Detect queued -> started and force exactly one full
+        # page rerun.
+        queue_state_key = f"_queue_ui_state::{Path(self.workflow_dir)}"
+        previous_queue_state = st.session_state.get(queue_state_key)
+
+        if (
+            job_id
+            and job_status == "started"
+            and isinstance(previous_queue_state, dict)
+            and previous_queue_state.get("job_id") == job_id
+            and previous_queue_state.get("status") == "queued"
+        ):
+            st.session_state[queue_state_key] = {
+                "job_id": job_id,
+                "status": job_status,
+            }
+            st.rerun()
+
+        if job_id:
+            st.session_state[queue_state_key] = {
+                "job_id": job_id,
+                "status": job_status,
+            }
 
         pid_exists = (
             self.executor.pid_dir.exists()
             and bool(list(self.executor.pid_dir.iterdir()))
         )
 
-        # Do not trigger a full-app rerun from this auto-refreshing fragment.
-        #
-        # The fragment already reruns automatically every 2 seconds. A temporary
-        # RQ/Redis status-read failure should therefore simply be retried on the
-        # next fragment refresh instead of rerunning the complete multipage app.
         if not is_running and not pid_exists:
-
             raw_log = "".join(lines)
 
-            # Queued workflow completed normally.
             if job_status == "finished":
                 job_result = status.get("result")
 
@@ -1568,22 +1588,18 @@ class StreamlitUI:
                 else:
                     st.rerun()
 
-            # Queued workflow failed.
             elif job_status == "failed":
                 st.error("**Workflow failed. Check the workflow log.**")
 
-            # Queued workflow was cancelled.
             elif job_status in {"canceled", "cancelled"}:
                 st.warning("**Workflow was cancelled.**")
 
-            # Local workflow completed.
             elif "WORKFLOW FINISHED" in raw_log:
                 st.rerun()
 
             elif "WORKFLOW CANCELLED" in raw_log:
                 st.warning("**Workflow was cancelled.**")
 
-            # Status may only be temporarily unavailable.
             else:
                 st.info(
                     "**Workflow status is temporarily unavailable. "
@@ -1603,22 +1619,33 @@ class StreamlitUI:
 
         c1, _ = st.columns(2)
 
-        # Always display the complete workflow log.
-        # No log-level or line-count choices are shown to the user.
         log_level = "all"
         log_lines_count = "all"
 
-        # Get workflow status (supports both queue and local modes)
         status = {}
         if get_status_function:
             status = get_status_function()
 
-        # Determine if workflow is running
         is_running = status.get("running", False)
         job_status = status.get("status", "idle")
 
-        # Fallback to PID check for backward compatibility
-        pid_exists = self.executor.pid_dir.exists() and list(self.executor.pid_dir.iterdir())
+        # Store the state seen by the full-page render. The live fragment uses
+        # this to detect a later queued -> started transition.
+        queue_state_key = f"_queue_ui_state::{Path(self.workflow_dir)}"
+        job_id = status.get("job_id")
+
+        if job_id:
+            st.session_state[queue_state_key] = {
+                "job_id": job_id,
+                "status": job_status,
+            }
+        else:
+            st.session_state.pop(queue_state_key, None)
+
+        pid_exists = (
+            self.executor.pid_dir.exists()
+            and list(self.executor.pid_dir.iterdir())
+        )
         if not is_running and pid_exists:
             is_running = True
             job_status = "running"
@@ -1626,11 +1653,9 @@ class StreamlitUI:
         log_path = Path(self.workflow_dir, "logs", "all.log")
         log_exists = log_path.exists()
 
-        # Show queue status if available (online mode)
         if status.get("job_id"):
             self._show_queue_status(status)
 
-        # Control buttons
         if is_running:
             if c1.button("Stop Workflow", type="primary", use_container_width=True):
                 if stop_workflow_function:
@@ -1638,13 +1663,13 @@ class StreamlitUI:
                 else:
                     self.executor.stop()
                 st.rerun()
+
         elif c1.button("Start Workflow", type="primary", use_container_width=True):
             start_workflow_function()
             with st.spinner("**Workflow starting...**"):
                 time.sleep(10)
                 st.rerun()
 
-        # Display logs and status
         if is_running:
             if job_status == "queued":
                 pos = status.get("queue_position", "?")
@@ -1658,20 +1683,24 @@ class StreamlitUI:
             )
 
         elif log_exists:
-            # Static display after completion
             st.markdown(
-                f"**Workflow log file: {datetime.fromtimestamp(log_path.stat().st_ctime).strftime('%Y-%m-%d %H:%M')} CET**"
+                f"**Workflow log file: "
+                f"{datetime.fromtimestamp(log_path.stat().st_ctime).strftime('%Y-%m-%d %H:%M')} CET**"
             )
+
             with open(log_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
+
             content = "".join(lines)
             outcome = classify_log_outcome(content)
+
             if outcome == "finished":
                 st.success("**Workflow completed successfully.**")
             elif outcome == "cancelled":
                 st.warning("**Workflow was cancelled.**")
             else:
                 st.error("**Errors occurred, check log file.**")
+
             display_lines = _filter_display_log_lines(lines)
             display_content = _clean_terminal_output("".join(display_lines))
             self._render_resizable_log(display_content)
@@ -1726,6 +1755,7 @@ class StreamlitUI:
         # Expandable job details
         with st.expander("Job Details", expanded=False):
             st.code(f"""Job ID: {status.get('job_id', 'N/A')}
+            
 Submitted: {status.get('enqueued_at', 'N/A')}
 Started: {status.get('started_at', 'N/A')}""")
 
