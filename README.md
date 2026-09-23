@@ -66,9 +66,6 @@ Users can manage their result files available in workspace with `Result files` t
 
 #### How to upload result files (e.g., from external sources/collaborator) for manual inspection and visualization?
 At **Upload result files** tab, user can  `upload` the results files and can visualize in **View Results** tab.
-In the web app, collaborators can visualize files by sharing a unique workspace ID.
-
-⚠️ Note: In the web app, all users with a unique workspace ID have the same rights.
 
 ### 6. 📖 Documentation
 
