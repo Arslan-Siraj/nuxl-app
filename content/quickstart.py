@@ -57,6 +57,17 @@ if Path("OpenMS-NuXLApp.zip").exists():
                         type="primary"
                         )
 
+st.warning(
+    "⚠️ **Important: Save your workspace URL**\n\n"
+    "Your NuXLApp workspace is linked to the unique workspace ID in the browser URL. "
+    "**Please bookmark or save this URL** if you want to return to the same workspace later.\n\n"
+    "If you close the browser and do not keep the workspace URL, you may not be able "
+    "to access the same workspace and its uploaded files or analysis results again.\n\n"
+    "You can also share the workspace URL or workspace ID with collaborators so they "
+    "can access and visualize files in the same workspace.\n\n"
+    "**Note:** In the web app, all users with access to the same workspace ID have the same rights."
+)
+
 st.markdown("""
       User can start right away analyzing your data by following the steps below:
 
@@ -97,10 +108,7 @@ st.markdown("""
 
       #### How to upload result files (e.g., from external sources/collaborator) for manual inspection and visualization?
       At **Upload result files** tab, user can  `upload` the results files and can visualize in **View Results** tab.
-      In the web app, collaborators can visualize files by sharing a unique workspace ID.
-
-      ⚠️ Note: In the web app, all users with a unique workspace ID have the same rights.
-
+      
       #### Contact
       For any inquiries or assistance, please feel free to reach out to us.  
 

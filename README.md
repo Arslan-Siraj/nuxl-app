@@ -81,6 +81,16 @@ Documentation for **users** is included as pages in [NuXLApp](https://nuxl.webap
 
 Explore the hosted version here:  👉 [Live App](https://nuxl.webapps.openms.de/)
 
+⚠️ **Important: Save your workspace URL**
+
+Your NuXLApp workspace is linked to the unique workspace ID in the browser URL. **Please bookmark or save this URL** if you want to return to the same workspace later.
+
+If you close the browser and do not keep the workspace URL, you may not be able to access the same workspace and its uploaded files or analysis results again.
+
+You can also share the workspace URL or workspace ID with collaborators so they can access and visualize files in the same workspace.
+
+⚠️ **Note:** In the web app, all users with access to the same workspace ID have the same rights.
+
 ### 💻 2. Running NuXL locally: Installation as stand-alone tool windows exec
 1. To get started, download and extract the [OpenMS-NuXLApp.zip](https://github.com/Arslan-Siraj/nuxl-app/releases/) file from latest release.
 2. After installation of `OpenMS-NuXLApp.msi`, The app can then be launched using the corresponding desktop icon.
