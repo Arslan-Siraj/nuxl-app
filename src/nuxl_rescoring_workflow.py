@@ -485,8 +485,9 @@ class Workflow(WorkflowManager):
         """
         Render the rescoring execution section.
 
-        Previous post-run output/download UI is hidden while a new job is queued
-        or running.
+        Previous post-run result/download UI is hidden while a new job is queued
+        or running. The diagnostic-log download remains available during runtime
+        for troubleshooting and refreshes independently.
         """
         self.ui.export_parameters_markdown = self._safe_export_parameters_markdown
 
@@ -496,12 +497,18 @@ class Workflow(WorkflowManager):
             stop_workflow_function=self.stop_workflow,
         )
 
+        # Keep runtime diagnostics available while the workflow is running.
+        # WorkflowManager clears the previous logs directory when a new queued
+        # run is submitted, so this button always refers to the current run.
+        self._render_diagnostic_download()
+
+        # Normal post-run output stays hidden while queued/running.
         if not self.get_workflow_status().get("running", False):
             self._render_latest_success_download()
-            self._render_diagnostic_download()
 
+    @st.fragment(run_every=5.0)
     def _render_diagnostic_download(self) -> None:
-        """Offer the persistent rescoring diagnostic log for download."""
+        """Offer the current rescoring diagnostic log for download during runtime."""
         diagnostic_file = Path(self.workflow_dir, "logs", "rescoring_diagnostic.log")
         if not diagnostic_file.exists():
             return
@@ -513,18 +520,23 @@ class Workflow(WorkflowManager):
             return
 
         st.download_button(
-            label="⬇️ Download rescoring diagnostic log",
+            label="⬇️ Download current rescoring diagnostic log",
             data=diagnostic_data,
             file_name="rescoring_diagnostic.log",
             mime="text/plain",
             help=(
-                "Download the diagnostic log for troubleshooting NuXL rescoring. "
-                "The log contains runtime information such as memory usage, CPU settings, "
-                "workflow stages, and subprocess execution status."
+                "Download the current diagnostic log while rescoring is running or "
+                "after it finishes. The file refreshes every 5 seconds and contains "
+                "runtime information such as memory usage, CPU settings, workflow "
+                "stages, subprocess execution status, PID, hostname, and cgroup limits."
             ),
             use_container_width=True,
             key="download-rescoring-diagnostic-log",
         )
+
+        #st.caption(
+        #    "Diagnostic log refreshes every 5 second."
+        #)
 
     def _safe_export_parameters_markdown(self) -> str:
         params = self.parameter_manager.get_parameters_from_json()

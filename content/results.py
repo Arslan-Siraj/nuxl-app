@@ -1357,7 +1357,7 @@ elif main_view == "Upload result files":
     ):
 
         files = st.file_uploader(
-            "NuXL result files",
+            "NuXL cross-link result files",
             accept_multiple_files=(
                 st.session_state.location
                 == "local"
@@ -1367,8 +1367,10 @@ elif main_view == "Upload result files":
                 ".tsv",
             ],
             help=(
-                "Input file (Valid formats: 'idXML', 'tsv') "
-                "should be _XLs output file"
+                "Upload NuXL cross-link result files in `.idXML` or `.tsv` format. "
+                "The file should be an `_XLs` output file, for example "
+                "`*_perc_0.0100_XLs.idXML` or the corresponding `_XLs.tsv` file."
+                "These files will automatically available in results file, and selectable for visualization."
             ),
         )
 
